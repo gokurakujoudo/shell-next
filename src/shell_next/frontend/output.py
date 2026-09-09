@@ -46,7 +46,9 @@ class OutputHub:
         )
         self.sequence += 1
         self.offsets[stream] += len(data)
-        self.windows[stream] = (self.windows[stream] + data)[-self.config.match_bytes :]
+        self.windows[stream] = (self.windows[stream] + data[-self.config.match_bytes :])[
+            -self.config.match_bytes :
+        ]
         self.changed.set()
         for queue in tuple(self.subscribers):
             if queue.full():

@@ -94,7 +94,20 @@ class OutputSubscriberError(CaptureError):
 
 
 class PrivilegeError(ShellError):
-    """Privilege preparation or execution failed."""
+    """Privilege preparation or execution failed.
+
+    :param message: Secret-free failure description.
+    :param result: Optional immutable result when execution reached finalization.
+    """
+
+    def __init__(self, message: str, result: CommandResult | None = None) -> None:
+        """Retain finalized execution evidence without including authentication payloads.
+
+        :param message: Secret-free diagnostic text.
+        :param result: Optional finalized command result.
+        """
+        super().__init__(message)
+        self.result = result
 
 
 class PrivilegeUnsupportedError(PrivilegeError, CapabilityError):

@@ -4,7 +4,7 @@ import asyncio
 import time
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import replace
 from typing import Any
 
@@ -39,6 +39,7 @@ class ShellSession:
         :param config: Validated session configuration.
         """
         self.config = config
+        self.virtual_time = False
         self.session_id = uuid.uuid4().hex
         self.state = SessionState.NEW
         self.capabilities = backend_capabilities(config.backend)
@@ -142,8 +143,8 @@ class ShellSession:
         if timeout is not None:
             resolved = replace(resolved, timeouts=replace(resolved.timeouts, execution=timeout))
         validate_privilege(resolved.privilege, self.capabilities)
-        self.driver.reserve(command)
         handle = CommandHandle(self, self.next_command_id(), command, resolved)
+        handle.reservation = self.driver.reserve(command)
         self.pending[handle.command_id] = handle
         self.record("submit", command)
         task = asyncio.create_task(run_owned(handle))
@@ -172,7 +173,8 @@ class ShellSession:
         try:
             return await handle.wait()
         except asyncio.CancelledError:
-            await handle.stop()
+            with suppress(Exception):
+                await handle.stop()
             raise
 
     @asynccontextmanager
@@ -201,7 +203,8 @@ class ShellSession:
             yield handle
             await handle.wait()
         except BaseException:
-            await handle.stop()
+            with suppress(Exception):
+                await handle.stop()
             raise
         finally:
             self.scopes.discard(owner)

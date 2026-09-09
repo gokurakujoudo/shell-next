@@ -60,6 +60,8 @@ class MockExpectation:
     :param status: Native result after all interaction steps.
     :param cwd: Optional simulated persistent directory change.
     :param env: Simulated exported environment updates; None removes a variable.
+    :param authentication_prompts: Simulated private password requests; zero models a cache hit.
+    :param authenticated: Whether simulated privilege authentication succeeds.
     """
 
     command: Command
@@ -67,6 +69,8 @@ class MockExpectation:
     status: BackendStatus = field(default_factory=lambda: BackendStatus(0))
     cwd: str | None = None
     env: tuple[tuple[str, str | None], ...] = ()
+    authentication_prompts: int = 0
+    authenticated: bool = True
 
 
 @dataclass

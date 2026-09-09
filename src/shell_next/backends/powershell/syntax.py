@@ -47,12 +47,19 @@ $sn_error_writer.AutoFlush = $true
 $sn_saved_out = [Console]::Out
 $sn_saved_err = [Console]::Error
 $sn_saved_in = [Console]::In
+$sn_saved_handle = [ShellNext.StandardInput]::GetStdHandle(-10)
+$sn_input_handle = $sn_in.SafeFileHandle.DangerousGetHandle()
+if (-not [ShellNext.StandardInput]::SetHandleInformation($sn_input_handle, 1, 1)) {{
+    throw 'Unable to configure native business input inheritance'
+}}
+if (-not [ShellNext.StandardInput]::SetStdHandle(-10, $sn_input_handle)) {{
+    throw 'Unable to configure native business input'
+}}
 [Console]::SetOut($sn_writer)
 [Console]::SetError($sn_error_writer)
 [Console]::SetIn($sn_reader)
 $sn_terminating = $false
 $sn_success = $true
-$LASTEXITCODE = $null
 try {{
     {invocation_text} *>&1 | ForEach-Object {{
         if ($_ -is [Management.Automation.ErrorRecord]) {{
@@ -69,6 +76,7 @@ try {{
     [Console]::SetOut($sn_saved_out)
     [Console]::SetError($sn_saved_err)
     [Console]::SetIn($sn_saved_in)
+    $null = [ShellNext.StandardInput]::SetStdHandle(-10, $sn_saved_handle)
     $sn_writer.Dispose()
     $sn_error_writer.Dispose()
     $sn_reader.Dispose()

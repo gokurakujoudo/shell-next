@@ -16,10 +16,11 @@ class SessionDriver(Protocol):
         """Acquire backend resources before the session becomes usable."""
         ...
 
-    def reserve(self, command: Command) -> None:
+    def reserve(self, command: Command) -> object | None:
         """Validate and reserve a submitted command.
 
         :param command: Structural process or native script.
+        :returns: Optional driver-owned reservation data.
         """
         ...
 

@@ -27,6 +27,7 @@ class StreamCapture:
         self.path = path
         self.received = 0
         self.committed = 0
+        self.written = 0
         self.tail = bytearray()
         self.error: str | None = None
         self.file: BinaryIO | None = None
@@ -41,7 +42,10 @@ class StreamCapture:
         if self.file is None:
             assert self.path is not None
             self.file = self.path.open("xb")
-        self.file.write(data)
+        written = self.file.write(data)
+        self.written += written
+        if written != len(data):
+            raise OSError("Capture destination accepted a partial write")
 
     async def feed(self, data: bytes) -> None:
         """Retain the bounded tail and apply bounded backpressure to file writes.
@@ -50,8 +54,7 @@ class StreamCapture:
         """
         self.received += len(data)
         if not self.config.discard and self.config.tail_bytes:
-            self.tail.extend(data)
-            del self.tail[: -self.config.tail_bytes]
+            self.tail[:] = (self.tail + data[-self.config.tail_bytes :])[-self.config.tail_bytes :]
         if self.path is not None and self.error is None:
             if self.executor is None:
                 self.executor = ThreadPoolExecutor(
@@ -73,7 +76,7 @@ class StreamCapture:
             try:
                 self.file.flush()
                 os.fsync(self.file.fileno())
-                self.committed = self.received
+                self.committed = self.written
             finally:
                 self.file.close()
 
@@ -83,6 +86,8 @@ class StreamCapture:
         :param forced: Transport may still have unread bytes.
         :returns: Immutable stream accounting.
         """
+        if self.path is not None and self.executor is None:
+            await self.feed(b"")
         if self.executor is not None:
             try:
                 await asyncio.get_running_loop().run_in_executor(self.executor, self.seal_file)

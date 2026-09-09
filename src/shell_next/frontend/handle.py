@@ -12,6 +12,7 @@ from shell_next.errors import (
     CommandTimeoutError,
     InputError,
     InteractionError,
+    PrivilegeAuthenticationError,
 )
 from shell_next.frontend.capture import StreamCapture
 from shell_next.frontend.output import OutputHub
@@ -49,6 +50,8 @@ class CommandHandle:
         self.command_id = command_id
         self.command = command
         self.options = options
+        self.reservation: object | None = None
+        self.startup_failed = False
         self.future: asyncio.Future[CommandResult] = asyncio.get_running_loop().create_future()
         self.ready = asyncio.Event()
         self.stop_requested = asyncio.Event()
@@ -82,6 +85,8 @@ class CommandHandle:
         async with asyncio.timeout(wait_timeout):
             result = await asyncio.shield(self.future)
         if self.options.check and not result.success:
+            if result.outcome == Outcome.STARTUP_FAILURE and result.privilege.requested:
+                raise PrivilegeAuthenticationError("Privilege authentication failed", result)
             exception = {
                 Outcome.TIMEOUT: CommandTimeoutError,
                 Outcome.STOPPED: CommandStoppedError,

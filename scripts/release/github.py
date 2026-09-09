@@ -63,7 +63,22 @@ def main() -> None:
         )
     elif arguments.operation == "jobs":
         result = request(f"actions/runs/{arguments.run_id}/jobs")
-        print(json.dumps(result["jobs"]))
+        print(
+            json.dumps(
+                [
+                    {
+                        "id": job["id"],
+                        "name": job["name"],
+                        "status": job["status"],
+                        "conclusion": job["conclusion"],
+                        "failed_steps": [
+                            step["name"] for step in job["steps"] if step["conclusion"] == "failure"
+                        ],
+                    }
+                    for job in result["jobs"]
+                ]
+            )
+        )
     elif arguments.operation == "logs":
         content = request(f"actions/jobs/{arguments.job_id}/logs", raw=True)
         Path("reports").mkdir(exist_ok=True)

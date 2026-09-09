@@ -49,7 +49,13 @@ async def prepare_command(driver: NativeDriver, handle: CommandHandle) -> None:
         driver.files.append(script)
         script.write_text(handle.command.text + "\n", encoding="utf-8")
         text = source_script(script, backend)
-        argv = [driver.config.executable or "bash", "--noprofile", "--norc", str(script)]
+        argv = [
+            driver.config.executable or "bash",
+            "--noprofile",
+            "--norc",
+            "-c",
+            handle.command.text,
+        ]
     if not native_script or elevated:
         manifest = driver.native.path / f"{token}.json"
         driver.files.append(manifest)

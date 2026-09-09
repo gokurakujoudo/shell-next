@@ -4,6 +4,8 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from shell_next.errors import InputError, MockExpectationError, SessionProtocolError
+from shell_next.frontend.finalization import finalize_output
+from shell_next.frontend.lease import acquire_lease
 from shell_next.models.commands import ProcessCommand
 from shell_next.models.input import CloseStdin, Expect, SendLine
 from shell_next.models.results import BackendStatus, CleanupReport, CommandResult
@@ -47,7 +49,8 @@ async def execute_owned(handle: CommandHandle) -> tuple[Outcome, BackendStatus]:
     stopped = asyncio.create_task(handle.stop_requested.wait())
     tasks = [execution, automation, stopped]
     try:
-        async with asyncio.timeout(handle.options.timeouts.execution):
+        deadline = None if handle.session.virtual_time else handle.options.timeouts.execution
+        async with asyncio.timeout(deadline):
             while True:
                 done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                 if stopped in done:
@@ -83,10 +86,8 @@ async def run_owned(handle: CommandHandle) -> None:
     forced = False
     expectation: MockExpectationError | None = None
     try:
-        async with asyncio.timeout(handle.options.timeouts.acquire):
-            await session.lease.acquire()
-        acquired = True
-        if not handle.stop_requested.is_set() and session.state == SessionState.OPEN:
+        acquired = await acquire_lease(handle)
+        if acquired and not handle.stop_requested.is_set() and session.state == SessionState.OPEN:
             handle.state = "preparing"
             async with asyncio.timeout(handle.options.timeouts.prepare):
                 await session.driver.prepare(handle)
@@ -123,11 +124,16 @@ async def run_owned(handle: CommandHandle) -> None:
             except Exception as exc:
                 errors.append(type(exc).__name__)
         handle.ready.set()
-        stdout, stderr = await asyncio.gather(
-            handle.captures["stdout"].seal(forced), handle.captures["stderr"].seal(forced)
+        stdout, stderr = await finalize_output(handle, forced)
+        errors.extend(
+            f"{name}: {capture.error}"
+            for name, capture in handle.captures.items()
+            if capture.error is not None
         )
         if outcome == Outcome.EXITED and (not stdout.sealed or not stderr.sealed):
             outcome = Outcome.OUTPUT_FAILURE
+        if outcome == Outcome.EXITED and handle.startup_failed:
+            outcome = Outcome.STARTUP_FAILURE
         if (
             outcome == Outcome.EXITED
             and handle.privilege.requested

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Runs only in the disposable RHEL 8 UBI CI container.
 dnf install -y gcc make openssl-devel libffi-devel zlib-devel bzip2-devel xz-devel \
-  sqlite-devel readline-devel curl tar gzip findutils shadow-utils sudo git
+  sqlite-devel curl tar gzip findutils shadow-utils sudo git
 if [[ ! -x /opt/python/bin/python3.14 ]]; then
   curl --fail --location --retry 3 https://www.python.org/ftp/python/3.14.2/Python-3.14.2.tgz -o /tmp/python.tgz
   tar -xzf /tmp/python.tgz -C /tmp

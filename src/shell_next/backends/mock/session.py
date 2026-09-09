@@ -29,6 +29,7 @@ class MockShellSession(ShellSession):
         self.driver = MockDriver(self.scenario, self)
         self.cwd = config.cwd or ("C:\\" if config.backend != Backend.BASH else "/")
         self.session_id = "mock-session"
+        self.virtual_time = True
         self.command_count = 0
 
     def next_command_id(self) -> str:

@@ -55,6 +55,8 @@ def main(path: str) -> int:
             print(manifest["token"] + ":ready", flush=True)
             return subprocess.run(argv, stdin=stdin, stdout=stdout, stderr=stderr).returncode
         except OSError:
+            print(manifest["token"] + ":ready", flush=True)
+            print(manifest["token"] + ":startup_failure", flush=True)
             stderr.write(b"shell-next: executable could not start\n")
             return 127
 

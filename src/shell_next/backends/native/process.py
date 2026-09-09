@@ -8,7 +8,7 @@ from pathlib import Path
 from shell_next.backends.bash.containment import PosixGroup
 from shell_next.backends.native.containment import create_containment
 from shell_next.backends.windows.containment import WindowsJob
-from shell_next.errors import CapabilityError, SessionStartupError
+from shell_next.errors import CapabilityError, SessionProtocolError, SessionStartupError
 from shell_next.models.config import SessionConfig
 from shell_next.models.results import CleanupReport
 from shell_next.models.state import Backend
@@ -32,6 +32,7 @@ class NativeProcess:
         self.path = Path()
         self.errors: list[str] = []
         self.error_reader: asyncio.Task[None] | None = None
+        self.protocol_failed = asyncio.Event()
 
     async def start(self) -> None:
         """Start the selected shell and adopt it even if the calling task is cancelled.
@@ -50,8 +51,9 @@ class NativeProcess:
         elif backend == Backend.POWERSHELL:
             driver = self.path / "driver.ps1"
             driver.write_text(
-                "$sn_control = [Console]::In\n"
-                "while ($null -ne ($sn_path = $sn_control.ReadLine())) { . $sn_path }\n",
+                (Path(__file__).parents[1] / "powershell" / "driver.ps1").read_text(
+                    encoding="utf-8"
+                ),
                 encoding="utf-8",
             )
             argv = [
@@ -86,9 +88,16 @@ class NativeProcess:
             self.containment = create_containment(self.process)
             self.error_reader = asyncio.create_task(self.drain_control_errors())
             if backend == Backend.BASH:
-                await self.write("exec 9>&1\n")
+                await self.write("exec 9>&1\nprintf 'shell-next-session-ready\\n'\n")
             elif backend == Backend.CMD:
-                await self.write("chcp 65001 >nul\n")
+                await self.write("chcp 65001 >nul\necho shell-next-session-ready\n")
+            assert self.process.stdout is not None
+            while True:
+                line = await self.read_control()
+                if not line:
+                    raise SessionStartupError("Shell exited before its startup handshake")
+                if line.rstrip().endswith(b"shell-next-session-ready"):
+                    break
         except BaseException as exc:
             if self.process is None and not creation.cancelled():
                 try:
@@ -106,6 +115,26 @@ class NativeProcess:
         while data := await self.process.stderr.read(65536):
             if data:
                 self.errors[:] = ["Native shell wrote to its private diagnostic channel"]
+                self.protocol_failed.set()
+
+    async def read_control(self) -> bytes:
+        """Read private status while detecting wrapper failures that cannot emit a status.
+
+        :returns: One status line, or EOF.
+        :raises SessionProtocolError: The private diagnostic channel reports protocol damage.
+        """
+        assert self.process is not None and self.process.stdout is not None
+        reading = asyncio.create_task(self.process.stdout.readline())
+        failure = asyncio.create_task(self.protocol_failed.wait())
+        try:
+            done, _ = await asyncio.wait((reading, failure), return_when=asyncio.FIRST_COMPLETED)
+            if failure in done:
+                raise SessionProtocolError("Native command wrapper failed")
+            return await reading
+        finally:
+            reading.cancel()
+            failure.cancel()
+            await asyncio.gather(reading, failure, return_exceptions=True)
 
     async def write(self, text: str) -> None:
         """Submit trusted control text to the persistent shell.
@@ -117,9 +146,10 @@ class NativeProcess:
         self.process.stdin.write(text.encode("utf-8"))
         await self.process.stdin.drain()
 
-    async def close(self) -> CleanupReport:
+    async def close(self, wait_timeout: float | None = None) -> CleanupReport:
         """Terminate all contained descendants and release session resources.
 
+        :param wait_timeout: Optional force-stop budget in seconds, otherwise the session default.
         :returns: Cleanup evidence including secondary failures.
         """
         errors: list[str] = []
@@ -129,7 +159,9 @@ class NativeProcess:
                     self.containment.terminate()
                 elif self.process.returncode is None:
                     self.process.kill()
-                async with asyncio.timeout(self.config.shutdown_timeout):
+                async with asyncio.timeout(
+                    self.config.shutdown_timeout if wait_timeout is None else wait_timeout
+                ):
                     await self.process.wait()
             except (OSError, TimeoutError) as exc:
                 errors.append(type(exc).__name__)

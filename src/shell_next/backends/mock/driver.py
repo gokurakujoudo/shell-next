@@ -14,6 +14,7 @@ from shell_next.backends.mock.scenario import (
 )
 from shell_next.errors import InputError, MockUnexpectedInputError, SessionProtocolError
 from shell_next.models.commands import Command
+from shell_next.models.privilege import PrivilegeReport
 from shell_next.models.results import BackendStatus, CleanupReport
 
 if TYPE_CHECKING:
@@ -36,7 +37,6 @@ class MockDriver:
         """
         self.scenario = scenario
         self.session = session
-        self.reserved: deque[MockExpectation] = deque()
         self.active: MockExpectation | None = None
         self.inputs: deque[bytes | None] = deque()
         self.changed = asyncio.Event()
@@ -44,20 +44,22 @@ class MockDriver:
     async def start(self) -> None:
         """Enter the mock without consulting or changing ambient process state."""
 
-    def reserve(self, command: Command) -> None:
+    def reserve(self, command: Command) -> MockExpectation:
         """Match and reserve the next command in deterministic FIFO order.
 
         :param command: Submitted process or native script description.
+        :returns: The exact reserved expectation, even when other queued commands are stopped.
         :raises MockUnexpectedCommandError: No strict expectation matches.
         """
-        self.reserved.append(self.scenario.reserve(command))
+        return self.scenario.reserve(command)
 
     async def prepare(self, handle: CommandHandle) -> None:
         """Adopt the reserved expectation without filesystem or subprocess work.
 
         :param handle: Command receiving simulated transport behavior.
         """
-        self.active = self.reserved.popleft()
+        assert isinstance(handle.reservation, MockExpectation)
+        self.active = handle.reservation
         self.inputs.clear()
 
     async def execute(self, handle: CommandHandle) -> BackendStatus:
@@ -72,6 +74,20 @@ class MockDriver:
         :raises SessionProtocolError: A session loss was configured.
         """
         assert self.active is not None
+        if handle.privilege.requested:
+            request = handle.options.privilege
+            for _ in range(min(self.active.authentication_prompts, request.attempts)):
+                if request.password_provider is not None:
+                    await request.password_provider()
+                self.session.record("authenticate", "<redacted>")
+            handle.privilege = PrivilegeReport(
+                True,
+                self.active.authenticated,
+                min(self.active.authentication_prompts, request.attempts),
+            )
+            if not self.active.authenticated:
+                handle.ready.set()
+                return BackendStatus(126)
         handle.ready.set()
         elapsed = 0.0
         for step in self.active.steps:

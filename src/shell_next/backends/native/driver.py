@@ -11,6 +11,7 @@ from shell_next.backends.native.channels import CommandChannel
 from shell_next.backends.native.preparation import prepare_command
 from shell_next.backends.native.process import NativeProcess
 from shell_next.backends.native.syntax import quote, source_script
+from shell_next.backends.native.termination import stop_native
 from shell_next.errors import SessionProtocolError
 from shell_next.models.commands import Command
 from shell_next.models.config import SessionConfig
@@ -40,6 +41,7 @@ class NativeDriver:
         self.pumps: list[asyncio.Task[None]] = []
         self.activation: asyncio.Task[None] | None = None
         self.ready = asyncio.Event()
+        self.timeouts = config.defaults.timeouts
         self.authentication: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
@@ -61,6 +63,7 @@ class NativeDriver:
         :param handle: Command owning these resources.
         :raises OSError: Pipe or private file creation fails.
         """
+        self.timeouts = handle.options.timeouts
         await prepare_command(self, handle)
 
     async def activate(self, handle: CommandHandle) -> None:
@@ -124,7 +127,7 @@ class NativeDriver:
         assert process is not None and process.stdout is not None
         token = (handle.command_id + ":").encode()
         while True:
-            data = await process.stdout.readline()
+            data = await self.native.read_control()
             if not data:
                 raise SessionProtocolError(
                     "Persistent shell exited before reporting command status"
@@ -143,6 +146,9 @@ class NativeDriver:
                 continue
             if payload == b"ready":
                 self.ready.set()
+                continue
+            if payload == b"startup_failure":
+                handle.startup_failed = True
                 continue
             if payload.startswith(b"{"):
                 status = json.loads(payload)
@@ -192,7 +198,7 @@ class NativeDriver:
 
         :returns: Process cleanup report.
         """
-        return await self.native.close()
+        return await stop_native(self)
 
     async def close(self) -> CleanupReport:
         """Close all session resources idempotently.
