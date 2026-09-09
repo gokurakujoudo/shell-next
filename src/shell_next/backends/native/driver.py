@@ -12,7 +12,7 @@ from shell_next.backends.native.preparation import prepare_command
 from shell_next.backends.native.process import NativeProcess
 from shell_next.backends.native.syntax import quote, source_script
 from shell_next.backends.native.termination import stop_native
-from shell_next.errors import SessionProtocolError
+from shell_next.errors import CaptureError, SessionProtocolError
 from shell_next.models.commands import Command
 from shell_next.models.config import SessionConfig
 from shell_next.models.privilege import PrivilegeReport
@@ -158,8 +158,12 @@ class NativeDriver:
             else:
                 result = BackendStatus(int(payload))
             break
-        async with asyncio.timeout(handle.options.timeouts.drain):
-            await asyncio.gather(*self.pumps)
+        handle.backend_status = result
+        try:
+            async with asyncio.timeout(handle.options.timeouts.drain):
+                await asyncio.gather(*self.pumps)
+        except TimeoutError as exc:
+            raise CaptureError("Output drain deadline expired") from exc
         return result
 
     async def send(self, data: bytes) -> None:

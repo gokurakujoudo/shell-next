@@ -5,6 +5,7 @@ from typing import Literal
 
 from shell_next.errors import MockExpectationNotConsumedError, MockUnexpectedCommandError
 from shell_next.models.commands import Command
+from shell_next.models.config import validate_seconds
 from shell_next.models.input import StreamName
 from shell_next.models.results import BackendStatus
 
@@ -39,6 +40,13 @@ class Advance:
     """
 
     seconds: float
+
+    def __post_init__(self) -> None:
+        """Reject virtual time moving backwards or becoming nonfinite.
+
+        :raises ConfigurationError: The virtual duration is invalid.
+        """
+        validate_seconds(self.seconds, "virtual seconds")
 
 
 @dataclass(frozen=True)

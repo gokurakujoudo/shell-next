@@ -15,16 +15,20 @@ from shell_next.errors import (
     PrivilegeAuthenticationError,
 )
 from shell_next.frontend.capture import StreamCapture
+from shell_next.frontend.observation import checkpoint, virtual_wait
 from shell_next.frontend.output import OutputHub
 from shell_next.models.commands import Command
 from shell_next.models.config import CommandOptions
 from shell_next.models.input import InputSummary, MatchStream, StreamName
 from shell_next.models.privilege import PrivilegeReport
-from shell_next.models.results import CommandResult, CommandSnapshot, OutputEvent
+from shell_next.models.results import BackendStatus, CommandResult, CommandSnapshot, OutputEvent
 from shell_next.models.state import Outcome, StdinMode
 
 if TYPE_CHECKING:
     from shell_next.frontend.session import ShellSession
+
+INPUT_CHUNK_BYTES = 65536
+"""Maximum bytes per input transport step; package policy bounds buffered writes to 64 KiB."""
 
 
 class CommandHandle:
@@ -52,6 +56,8 @@ class CommandHandle:
         self.options = options
         self.reservation: object | None = None
         self.startup_failed = False
+        self.backend_status = BackendStatus()
+        self.virtual_blocked = False
         self.future: asyncio.Future[CommandResult] = asyncio.get_running_loop().create_future()
         self.ready = asyncio.Event()
         self.stop_requested = asyncio.Event()
@@ -82,6 +88,9 @@ class CommandHandle:
         :raises CommandStartupError: check=True and command startup failed.
         :raises InteractionError: check=True and automatic input failed.
         """
+        if self.session.virtual_time and wait_timeout is not None and wait_timeout > 0:
+            await virtual_wait(self)
+            wait_timeout = None
         async with asyncio.timeout(wait_timeout):
             result = await asyncio.shield(self.future)
         if self.options.check and not result.success:
@@ -127,23 +136,28 @@ class CommandHandle:
         """
         await self.ready.wait()
         async with self.writer_lock:
-            if self.input.closed or self.future.done():
+            if self.input.closed or self.state != "running":
                 raise InputError("Command stdin is closed")
             self.input = replace(
                 self.input, accepted=self.input.accepted + len(data), state="accepted"
             )
             self.session.record("send", self.command_id, "<redacted>" if secret else data)
             try:
-                await self.session.driver.send(data)
+                for offset in range(0, len(data), INPUT_CHUNK_BYTES):
+                    chunk = data[offset : offset + INPUT_CHUNK_BYTES]
+                    await self.session.driver.send(chunk)
+                    self.input = replace(
+                        self.input,
+                        submitted=self.input.submitted + len(chunk),
+                        state="partially_submitted",
+                    )
             except asyncio.CancelledError:
                 self.input = replace(self.input, state="aborted")
                 raise
             except (OSError, ConnectionError) as exc:
                 self.input = replace(self.input, state="failed")
                 raise InputError("Input transport failed; input was not retried") from exc
-            self.input = replace(
-                self.input, submitted=self.input.submitted + len(data), state="submitted"
-            )
+            self.input = replace(self.input, state="submitted")
             return self.input
 
     async def sendline(self, data: bytes, *, secret: bool = False) -> InputSummary:
@@ -178,6 +192,10 @@ class CommandHandle:
         :raises TimeoutError: The observation deadline expired.
         """
         self.session.record("expect", self.command_id, pattern, stream)
+        if self.session.virtual_time and timeout is not None:
+            await self.ready.wait()
+            await checkpoint()
+            timeout = 0
         return await self.hub.expect(pattern, stream, timeout)
 
     def events(self) -> AsyncIterator[OutputEvent]:

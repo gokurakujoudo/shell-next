@@ -25,6 +25,8 @@ jobs:
       - run: python scripts/quality/check_source.py
       - name: Run platform contracts and collect partial coverage
         run: python -m pytest --cov --cov-branch --cov-report=xml --cov-fail-under=0
+      - name: Verify installed wheel outside the source checkout
+        run: python -m scripts.release.check_wheel
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,7 +46,7 @@ jobs:
         with:
           pattern: coverage-*
           path: reports/coverage
-      - run: python -m coverage combine reports/coverage/coverage-ubuntu-latest reports/coverage/coverage-windows-latest reports/coverage/coverage-rhel8
+      - run: python -m coverage combine reports/coverage/coverage-ubuntu-latest/.coverage reports/coverage/coverage-windows-latest/.coverage reports/coverage/coverage-rhel8/.coverage
       - name: Enforce full combined branch coverage
         run: python -m coverage report --fail-under=100
       - run: python -m build

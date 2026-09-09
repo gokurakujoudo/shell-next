@@ -28,6 +28,7 @@ async def prepare_command(driver: NativeDriver, handle: CommandHandle) -> None:
     token = handle.command_id
     privilege = handle.options.privilege
     elevated = privilege.requirement == "elevated"
+    driver.native.privileged_used |= elevated
     names = ["stdout", "stderr", "stdin"]
     if elevated and privilege.interactive:
         names.extend(("auth_out", "auth_in"))

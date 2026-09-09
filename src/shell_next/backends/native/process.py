@@ -33,6 +33,7 @@ class NativeProcess:
         self.errors: list[str] = []
         self.error_reader: asyncio.Task[None] | None = None
         self.protocol_failed = asyncio.Event()
+        self.privileged_used = False
 
     async def start(self) -> None:
         """Start the selected shell and adopt it even if the calling task is cancelled.
@@ -112,10 +113,9 @@ class NativeProcess:
     async def drain_control_errors(self) -> None:
         """Continuously drain protocol diagnostics, retaining only bounded error metadata."""
         assert self.process is not None and self.process.stderr is not None
-        while data := await self.process.stderr.read(65536):
-            if data:
-                self.errors[:] = ["Native shell wrote to its private diagnostic channel"]
-                self.protocol_failed.set()
+        while await self.process.stderr.read(65536):
+            self.errors[:] = ["Native shell wrote to its private diagnostic channel"]
+            self.protocol_failed.set()
 
     async def read_control(self) -> bytes:
         """Read private status while detecting wrapper failures that cannot emit a status.
@@ -179,4 +179,6 @@ class NativeProcess:
             except OSError as exc:
                 errors.append(type(exc).__name__)
             self.directory = None
-        return CleanupReport(forced=True, contained=not errors, errors=tuple(errors))
+        return CleanupReport(
+            forced=True, contained=not errors and not self.privileged_used, errors=tuple(errors)
+        )

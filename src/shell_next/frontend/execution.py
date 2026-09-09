@@ -1,9 +1,10 @@
 """Shared ownership, execution deadlines, and immutable result finalization."""
 
 import asyncio
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from shell_next.errors import InputError, MockExpectationError, SessionProtocolError
+from shell_next.errors import CaptureError, InputError, MockExpectationError, SessionProtocolError
 from shell_next.frontend.finalization import finalize_output
 from shell_next.frontend.lease import acquire_lease
 from shell_next.models.commands import ProcessCommand
@@ -64,7 +65,17 @@ async def execute_owned(handle: CommandHandle) -> tuple[Outcome, BackendStatus]:
                         raise InputError("Automatic input failed") from exc
                     tasks.remove(automation)
                 if execution in done:
-                    return Outcome.EXITED, await execution
+                    status = await execution
+                    handle.state = "finishing"
+                    handle.hub.finish()
+                    try:
+                        async with asyncio.timeout(handle.options.timeouts.drain):
+                            await automation
+                    except MockExpectationError:
+                        raise
+                    except Exception as exc:
+                        raise InputError("Command ended before its input plan completed") from exc
+                    return Outcome.EXITED, status
     finally:
         for task in (execution, automation, stopped):
             task.cancel()
@@ -98,6 +109,9 @@ async def run_owned(handle: CommandHandle) -> None:
         outcome = Outcome.TIMEOUT
     except InputError:
         outcome = Outcome.INPUT_FAILURE
+    except CaptureError:
+        outcome = Outcome.OUTPUT_FAILURE
+        status = handle.backend_status
     except MockExpectationError as exc:
         expectation = exc
         outcome = Outcome.INPUT_FAILURE
@@ -125,6 +139,8 @@ async def run_owned(handle: CommandHandle) -> None:
                 errors.append(type(exc).__name__)
         handle.ready.set()
         stdout, stderr = await finalize_output(handle, forced)
+        if handle.privilege.requested:
+            cleanup = replace(cleanup, contained=False)
         errors.extend(
             f"{name}: {capture.error}"
             for name, capture in handle.captures.items()

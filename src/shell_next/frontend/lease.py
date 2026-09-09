@@ -15,11 +15,19 @@ async def acquire_lease(handle: CommandHandle) -> bool:
     :raises TimeoutError: The independent acquisition deadline elapsed.
     """
     lease = handle.session.lease
+    if handle.stop_requested.is_set():
+        return False
+    budget = handle.options.timeouts.acquire
+    if next(iter(handle.session.pending), None) == handle.command_id and not lease.locked():
+        async with asyncio.timeout(budget):
+            return await lease.acquire()
+    if handle.session.virtual_time and budget is not None:
+        raise TimeoutError("Virtual acquisition deadline expired")
     acquisition = asyncio.create_task(lease.acquire())
     stopped = asyncio.create_task(handle.stop_requested.wait())
     acquired = False
     try:
-        async with asyncio.timeout(handle.options.timeouts.acquire):
+        async with asyncio.timeout(budget):
             await asyncio.wait((acquisition, stopped), return_when=asyncio.FIRST_COMPLETED)
         if acquisition.done():
             acquired = acquisition.result()

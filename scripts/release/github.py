@@ -1,10 +1,12 @@
 """GitHub release operations using the existing credential helper, without token output."""
 
 import argparse
+import io
 import json
 import os
 import subprocess
 import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +39,9 @@ def request(endpoint: str, payload: dict[str, object] | None = None, *, raw: boo
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=("status", "runs", "jobs", "logs", "draft"))
+    parser.add_argument(
+        "operation", choices=("status", "runs", "jobs", "logs", "coverage", "draft")
+    )
     parser.add_argument("--run-id")
     parser.add_argument("--job-id")
     arguments = parser.parse_args()
@@ -85,7 +89,17 @@ def main() -> None:
         destination = Path("reports") / f"github-job-{arguments.job_id}.log"
         destination.write_bytes(content)
         print(destination)
-        print(content.decode("utf-8")[-18000:])
+        print(content.decode("utf-8-sig")[-18000:].encode("ascii", "backslashreplace").decode())
+    elif arguments.operation == "coverage":
+        artifacts = request(f"actions/runs/{arguments.run_id}/artifacts")["artifacts"]
+        for artifact in artifacts:
+            if artifact["name"].startswith("coverage-"):
+                data = request(f"actions/artifacts/{artifact['id']}/zip", raw=True)
+                destination = Path("reports") / "coverage" / artifact["name"]
+                destination.mkdir(parents=True, exist_ok=True)
+                with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                    (destination / ".coverage").write_bytes(archive.read(".coverage"))
+                print(destination)
     else:
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         result = request(
