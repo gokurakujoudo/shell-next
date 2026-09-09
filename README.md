@@ -6,8 +6,7 @@ Persistent asynchronous Bash, PowerShell, and cmd sessions for Python 3.14+.
 from shell_next import Backend, ProcessCommand, SessionConfig, use_shell_session
 
 
-async def inspect_repository():
-    config = SessionConfig(backend=Backend.BASH)
+async def inspect_repository(config: SessionConfig):
     async with use_shell_session(config) as shell:
         await shell.chdir("/srv/project")
         result = await shell.run(ProcessCommand("git", ("status", "--short")), check=True)
@@ -18,8 +17,9 @@ Use `ProcessCommand` for executable arguments that must remain structural. Use
 `SessionScript` for backend-native scripts and persistent shell variables,
 functions, and aliases. Shell syntax is never translated between languages.
 
-The package is under development. The [release gates](docs/development/release.md)
-record validation required before the first public release.
+Install with `python -m pip install shell-next`. Supply
+`SessionConfig(backend=Backend.BASH)` on Linux, or select `Backend.POWERSHELL`
+(PowerShell 7 installed) or `Backend.CMD` on Windows. Python 3.14+ is required.
 
 ## Interactive commands
 
@@ -78,6 +78,7 @@ unsupported. The library is a process-management API, **not a security sandbox**
 for untrusted scripts.
 
 See the [development specification](docs/development/specification.md),
+[usage guide](docs/usage.md),
 [architecture](docs/development/architecture.md), and
 [release checklist](docs/development/release.md).
 

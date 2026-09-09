@@ -110,6 +110,8 @@ class NativeDriver:
                 :param task: Completed private authentication task.
                 """
                 if not task.cancelled() and task.exception() is not None:
+                    handle.startup_failed = True
+                    handle.privilege = PrivilegeReport(True, False)
                     handle.stop_requested.set()
 
             self.authentication.add_done_callback(authentication_finished)

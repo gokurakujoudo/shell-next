@@ -19,7 +19,16 @@ from shell_next import (
     use_shell_session,
 )
 from shell_next.backends.mock.driver import MockDriver
-from shell_next.errors import CommandTimeoutError, InputError, InteractionError, SessionClosedError
+from shell_next.errors import (
+    CommandTimeoutError,
+    InputError,
+    InteractionError,
+    MockUnexpectedInputError,
+    SessionClosedError,
+)
+from shell_next.frontend import execution
+from shell_next.frontend.handle import CommandHandle
+from shell_next.frontend.output import OutputHub
 
 
 async def test_check_converts_final_timeout_result() -> None:
@@ -131,3 +140,53 @@ async def test_startup_failure_and_reentry_validation(monkeypatch: pytest.Monkey
     with pytest.raises(OSError):
         async with use_shell_session(config):
             pass
+
+
+@pytest.mark.parametrize("late,mock_error", [(False, False), (False, True), (True, True)])
+async def test_automation_failures_preserve_strict_expectations(
+    late: bool,
+    mock_error: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ended = asyncio.Event()
+    original = OutputHub.finish
+
+    def finish(self: OutputHub) -> None:
+        original(self)
+        ended.set()
+
+    async def automate(handle: CommandHandle) -> None:
+        if late:
+            await ended.wait()
+        if mock_error:
+            raise MockUnexpectedInputError("expected failure")
+        raise ValueError("automation failure")
+
+    monkeypatch.setattr(execution, "automate_input", automate)
+    monkeypatch.setattr(OutputHub, "finish", finish)
+    command = ProcessCommand("virtual")
+    scenario = MockScenario([MockExpectation(command)])
+    async with use_shell_session(
+        SessionConfig(_session_cls=MockShellSession.configured(scenario))
+    ) as shell:
+        if mock_error:
+            with pytest.raises(MockUnexpectedInputError):
+                await shell.run(command)
+        else:
+            assert (await shell.run(command)).outcome == Outcome.INPUT_FAILURE
+
+
+async def test_unexpected_driver_failure_is_finalized(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def execute(self: MockDriver, handle: CommandHandle) -> Any:
+        raise RuntimeError("backend fault")
+
+    monkeypatch.setattr(MockDriver, "execute", execute)
+    command = ProcessCommand("virtual")
+    scenario = MockScenario([MockExpectation(command)])
+    async with use_shell_session(
+        SessionConfig(_session_cls=MockShellSession.configured(scenario))
+    ) as shell:
+        result = await shell.run(command)
+        assert result.outcome == Outcome.INTERNAL_FAILURE
+        assert result.secondary_errors == ("RuntimeError",)
+        assert result.stdout.sealed and not result.session_reusable

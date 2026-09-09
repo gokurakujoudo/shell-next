@@ -12,14 +12,9 @@ async def checkpoint() -> None:
     loop = asyncio.get_running_loop()
     ready: asyncio.Future[None] = loop.create_future()
 
-    def resume() -> None:
-        """Resume only a still-pending observer after earlier ready tasks."""
-        if not ready.done():
-            ready.set_result(None)
-
-    callback = loop.call_soon(resume)
+    callback = loop.call_soon(ready.set_result, None)
     try:
-        await ready
+        await asyncio.shield(ready)
     finally:
         callback.cancel()
 

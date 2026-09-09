@@ -36,6 +36,5 @@ async def acquire_lease(handle: CommandHandle) -> bool:
         acquisition.cancel()
         stopped.cancel()
         await asyncio.gather(acquisition, stopped, return_exceptions=True)
-        if not acquired and not acquisition.cancelled() and acquisition.exception() is None:
-            if acquisition.result():
-                lease.release()
+        if not acquired and not acquisition.cancelled():
+            lease.release()

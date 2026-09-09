@@ -27,6 +27,30 @@ class OutputChannel:
         assert data.endswith(b"\n")
 
 
+async def test_fragmented_private_prompt_and_eof() -> None:
+    calls = 0
+
+    async def provider() -> bytes:
+        nonlocal calls
+        calls += 1
+        return b"value"
+
+    options = CommandOptions(
+        privilege=PrivilegeRequest(
+            requirement="elevated",
+            interactive=True,
+            password_provider=provider,
+        )
+    )
+    handle = CommandHandle(
+        MockShellSession(SessionConfig()), "command", ProcessCommand("virtual"), options
+    )
+    await supply_passwords(
+        handle, cast(Any, InputChannel([b"pass", b"word\n"])), cast(Any, OutputChannel())
+    )
+    assert calls == 1
+
+
 @pytest.mark.parametrize(
     "chunks,password",
     [

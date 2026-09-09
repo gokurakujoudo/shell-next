@@ -4,7 +4,13 @@ import asyncio
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from shell_next.errors import CaptureError, InputError, MockExpectationError, SessionProtocolError
+from shell_next.errors import (
+    CaptureError,
+    InputError,
+    MockExpectationError,
+    PrivilegeAuthenticationError,
+    SessionProtocolError,
+)
 from shell_next.frontend.finalization import finalize_output
 from shell_next.frontend.lease import acquire_lease
 from shell_next.models.commands import ProcessCommand
@@ -55,7 +61,8 @@ async def execute_owned(handle: CommandHandle) -> tuple[Outcome, BackendStatus]:
             while True:
                 done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                 if stopped in done:
-                    return Outcome.STOPPED, BackendStatus()
+                    outcome = Outcome.STARTUP_FAILURE if handle.startup_failed else Outcome.STOPPED
+                    return outcome, BackendStatus()
                 if automation in done:
                     try:
                         await automation
@@ -117,6 +124,8 @@ async def run_owned(handle: CommandHandle) -> None:
         outcome = Outcome.INPUT_FAILURE
     except SessionProtocolError:
         outcome = Outcome.SESSION_LOST
+    except PrivilegeAuthenticationError:
+        outcome = Outcome.STARTUP_FAILURE
     except OSError as exc:
         outcome = Outcome.STARTUP_FAILURE
         errors.append(type(exc).__name__)

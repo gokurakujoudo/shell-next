@@ -59,3 +59,25 @@ async def test_mock_noninteractive_authentication_failure() -> None:
     ) as shell:
         result = await shell.run(command, options=options)
         assert not result.success and not result.privilege.authenticated
+
+
+async def test_password_provider_failure_has_finalized_privilege_error() -> None:
+    async def provider() -> bytes:
+        raise RuntimeError("secret")
+
+    command = ProcessCommand("virtual")
+    scenario = MockScenario([MockExpectation(command, authentication_prompts=1)])
+    options = CommandOptions(
+        privilege=PrivilegeRequest(
+            requirement="elevated",
+            interactive=True,
+            password_provider=provider,
+        )
+    )
+    async with use_shell_session(
+        SessionConfig(_session_cls=MockShellSession.configured(scenario))
+    ) as shell:
+        with pytest.raises(PrivilegeAuthenticationError) as failure:
+            await shell.run(command, options=options, check=True)
+        assert failure.value.result is not None
+        assert "secret" not in repr(failure.value.result)

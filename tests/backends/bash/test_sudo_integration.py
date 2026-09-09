@@ -1,3 +1,4 @@
+import asyncio
 import os
 import subprocess
 from pathlib import Path
@@ -9,6 +10,7 @@ from shell_next import (
     CommandOptions,
     Expect,
     InputPlan,
+    Outcome,
     PrivilegeRequest,
     SendLine,
     StdinMode,
@@ -96,3 +98,37 @@ async def test_noninteractive_sudo_and_strict_cleanup_rejection(directory: Path)
         )
         with pytest.raises(PrivilegeCleanupError):
             shell.submit(python_command("print('forbidden')"), options=strict)
+
+
+@pytest.mark.parametrize("provider_fails", [True, False])
+async def test_authentication_provider_failure_and_deadline(
+    directory: Path,
+    provider_fails: bool,
+) -> None:
+    invalidate_credentials()
+    called = asyncio.Event()
+
+    async def provider() -> bytes:
+        called.set()
+        if provider_fails:
+            raise RuntimeError("provider-secret-must-stay-private")
+        await asyncio.Event().wait()
+        return b"unreachable"
+
+    options = CommandOptions(
+        privilege=PrivilegeRequest(
+            requirement="elevated",
+            interactive=True,
+            password_provider=provider,
+        )
+    )
+    async with use_shell_session(config_for("bash", directory)) as shell:
+        result = await shell.run(
+            python_command("print('must not run')"), options=options, timeout=3
+        )
+        assert called.is_set()
+        expected = Outcome.STARTUP_FAILURE if provider_fails else Outcome.TIMEOUT
+        assert result.outcome == expected and not result.success
+        assert b"must not run" not in result.stdout.tail
+        assert "provider-secret-must-stay-private" not in repr(result)
+        assert not result.cleanup.contained and not shell.is_usable

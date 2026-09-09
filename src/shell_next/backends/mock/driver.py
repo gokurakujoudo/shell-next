@@ -7,12 +7,16 @@ from typing import TYPE_CHECKING
 from shell_next.backends.mock.scenario import (
     Advance,
     Emit,
-    Failure,
     MockExpectation,
     MockScenario,
     Receive,
 )
-from shell_next.errors import InputError, MockUnexpectedInputError, SessionProtocolError
+from shell_next.errors import (
+    InputError,
+    MockUnexpectedInputError,
+    PrivilegeAuthenticationError,
+    SessionProtocolError,
+)
 from shell_next.models.commands import Command
 from shell_next.models.privilege import PrivilegeReport
 from shell_next.models.results import BackendStatus, CleanupReport
@@ -80,7 +84,11 @@ class MockDriver:
             request = handle.options.privilege
             for _ in range(min(self.active.authentication_prompts, request.attempts)):
                 if request.password_provider is not None:
-                    await request.password_provider()
+                    try:
+                        await request.password_provider()
+                    except Exception:
+                        handle.privilege = PrivilegeReport(True, False)
+                        raise PrivilegeAuthenticationError("Password provider failed") from None
                 self.session.record("authenticate", "<redacted>")
             handle.privilege = PrivilegeReport(
                 True,
@@ -104,7 +112,7 @@ class MockDriver:
                     raise TimeoutError("Virtual command deadline expired")
                 elapsed += step.seconds
                 self.scenario.elapsed += step.seconds
-            elif isinstance(step, Failure):
+            else:
                 if step.kind == "input":
                     raise InputError("Simulated input failure")
                 if step.kind == "startup":
@@ -158,15 +166,15 @@ class MockDriver:
         :param data: Raw expected business input.
         """
         self.inputs.append(data)
-        if self.handle is not None:
-            self.handle.virtual_blocked = False
+        assert self.handle is not None
+        self.handle.virtual_blocked = False
         self.changed.set()
 
     async def close_stdin(self) -> None:
         """Queue an explicit in-memory EOF operation."""
         self.inputs.append(None)
-        if self.handle is not None:
-            self.handle.virtual_blocked = False
+        assert self.handle is not None
+        self.handle.virtual_blocked = False
         self.changed.set()
 
     async def finish(self) -> None:

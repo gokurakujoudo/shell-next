@@ -165,8 +165,8 @@ class NativeProcess:
                     await self.process.wait()
             except (OSError, TimeoutError) as exc:
                 errors.append(type(exc).__name__)
-            if self.process.stdin is not None:
-                self.process.stdin.close()
+            assert self.process.stdin is not None
+            self.process.stdin.close()
             if self.error_reader is not None:
                 self.error_reader.cancel()
                 await asyncio.gather(self.error_reader, return_exceptions=True)

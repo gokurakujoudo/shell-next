@@ -9,12 +9,19 @@ interface instead of constructing native adapters.
 
 | Responsibility | Modules | Tests |
 | --- | --- | --- |
-| Value validation and immutable contracts | commands, config, capabilities, state, results, input, privilege, errors | tests/unit/test_models.py |
-| Session ownership and command lifecycle | session, execution, handle, operations | tests/contracts |
-| Bounded output and subscriptions | capture, output | tests/unit/test_capture.py |
-| Native process and byte transports | native_process, containment, channels | tests/integration |
-| Native command protocol and syntax | native_driver, native_syntax, process_bridge | tests/integration |
-| Deterministic application double | mock, mock_driver, mock_scenario | tests/unit/test_mock.py and tests/contracts |
+| Value validation and immutable contracts | `models/{commands,config,capabilities,state,results,input,privilege}`; `errors` | `tests/models` |
+| Session ownership and command lifecycle | `frontend/{session,execution,lease,handle,observation,operations}` | `tests/frontend`, `tests/contracts` |
+| Bounded output and subscriptions | `frontend/{capture,output,finalization}` | `tests/frontend` |
+| Native process and byte transports | `backends/native/{process,channels,containment,termination}` | `tests/backends/native` |
+| Native command protocol | `backends/native/{driver,preparation,syntax,bridge}` | `tests/backends/native` |
+| Bash syntax and sudo | `backends/bash/{syntax,containment,authentication,password_channel}` | `tests/backends/bash` |
+| PowerShell and cmd syntax | `backends/powershell/{syntax,driver.ps1}`; `backends/cmd/syntax` | native and common contract tests |
+| Windows process containment | `backends/windows/{containment,limits}` | `tests/backends/native/test_platform_containment.py` |
+| Deterministic application double | `backends/mock/{session,driver,scenario}` | `tests/backends/mock`, `tests/contracts` |
+
+Quality tools live in `scripts/quality`; packaging and release operations live in
+`scripts/release`. Shared test fixtures belong in `tests/support`. Keep shell
+language details in their backend instead of branching throughout the frontend.
 
 Value models do not start processes or perform I/O. The common frontend owns
 submission, queuing, cancellation, and final results. Drivers own transport

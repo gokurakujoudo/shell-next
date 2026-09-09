@@ -20,7 +20,9 @@ def python_command(code: str, *args: str) -> ProcessCommand:
 
 def config_for(backend: str, directory: Path, *expectations: MockExpectation) -> SessionConfig:
     config = SessionConfig(
-        Backend.BASH if backend == "mock" else Backend(backend), cwd=str(directory)
+        Backend.BASH if backend == "mock" else Backend(backend),
+        cwd=str(directory),
+        startup_timeout=30,
     )
     if backend == "mock":
         config._session_cls = MockShellSession.configured(MockScenario(list(expectations)))

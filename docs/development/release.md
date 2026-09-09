@@ -16,8 +16,10 @@ The version remains an alpha while implementation and validation are incomplete.
 - Repeated lifecycle stress tests detect no process, handle, task, or thread leaks.
 - Wheel and sdist build, metadata checks, and installed-wheel smoke tests pass.
 - GitHub release artifacts are built from the tested commit.
-- PyPI Trusted Publishing is configured for this repository and release workflow.
+- PyPI publication uses a configured trusted publisher or the maintainer's existing
+  local PyPI credential configuration.
 
-Publication must use a GitHub environment named `pypi` and the PyPA trusted
-publisher action. Credentials are never committed to the repository. A draft
-release is a review artifact, not evidence that the validation gates passed.
+The optional GitHub publishing workflow uses an environment named `pypi` and
+the PyPA trusted publisher action. Local publication uses Twine after the same
+exact-commit verification. Credentials are never committed to the repository or
+printed by release tooling. A draft release does not establish that gates passed.
