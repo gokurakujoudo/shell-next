@@ -8,7 +8,7 @@ strict: true
 theme:
   name: readthedocs
   logo: assets/shell-next-logo.png
-  highlightjs: false
+  highlightjs: true
   navigation_depth: 3
   prev_next_buttons_location: bottom
 nav:
