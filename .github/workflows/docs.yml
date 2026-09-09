@@ -1,7 +1,7 @@
 name: documentation
 on:
   push:
-    branches: [codex/impl]
+    branches: [main]
     paths:
       - 'docs/**'
       - 'wiki/**'
@@ -40,7 +40,7 @@ jobs:
         with:
           path: site
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/codex/impl'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:

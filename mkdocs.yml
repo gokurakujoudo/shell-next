@@ -3,7 +3,7 @@ site_description: Persistent asynchronous shell sessions, with deterministic app
 site_url: https://gokurakujoudo.github.io/shell-next/
 repo_url: https://github.com/gokurakujoudo/shell-next
 repo_name: GitHub
-edit_uri: edit/codex/impl/docs/
+edit_uri: edit/main/docs/
 strict: true
 theme:
   name: readthedocs

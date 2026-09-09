@@ -22,7 +22,7 @@ assets, and logo integrity.
 ## GitHub Pages
 
 The `documentation` workflow builds pull requests for review. Pushes to
-`codex/impl`, the repository's default branch, build and deploy through the
+`main`, the repository's default branch, build and deploy through the
 `github-pages` environment. The deploy job receives only Pages write and OIDC
 permissions. No package publication is needed for documentation updates.
 
@@ -33,7 +33,7 @@ condition, MkDocs edit links, and README logo URL together.
 ## Wiki drafts
 
 Review-ready wiki files live in the repository's
-[wiki directory](https://github.com/gokurakujoudo/shell-next/tree/codex/impl/wiki).
+[wiki directory](https://github.com/gokurakujoudo/shell-next/tree/main/wiki).
 They are drafts, separate from the published Pages content. `Home.md`,
 `_Sidebar.md`, and `_Footer.md` use GitHub Wiki naming conventions. Publishing
 them to the separate wiki repository is an explicit follow-up operation.
