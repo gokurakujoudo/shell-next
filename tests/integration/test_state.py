@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 
@@ -17,7 +18,8 @@ async def test_persistent_state_and_structural_inheritance(backend: str, directo
         subdirectory = directory / "space and 中文"
         subdirectory.mkdir()
         await shell.chdir(str(subdirectory))
-        assert Path(await shell.get_cwd()) == subdirectory
+        actual_directory = Path(await shell.get_cwd())
+        assert await asyncio.to_thread(actual_directory.samefile, subdirectory)
         await shell.set_env("SHELL_NEXT_TEST", "stateful & literal")
         assert await shell.get_env("SHELL_NEXT_TEST") == "stateful & literal"
         native = {

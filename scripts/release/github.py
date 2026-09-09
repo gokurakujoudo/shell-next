@@ -5,10 +5,11 @@ import json
 import os
 import subprocess
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 
-def request(endpoint: str, payload: dict[str, object] | None = None) -> Any:
+def request(endpoint: str, payload: dict[str, object] | None = None, *, raw: bool = False) -> Any:
     token = os.environ.get("GH_TOKEN")
     if token is None:
         result = subprocess.run(
@@ -24,20 +25,21 @@ def request(endpoint: str, payload: dict[str, object] | None = None) -> Any:
         "https://api.github.com/repos/gokurakujoudo/shell-next/" + endpoint,
         data=None if payload is None else json.dumps(payload).encode(),
         headers={
-            "Authorization": "Bearer " + token,
             "Accept": "application/vnd.github+json",
             "User-Agent": "shell-next-release",
             "Content-Type": "application/json",
         },
     )
+    query.add_unredirected_header("Authorization", "Bearer " + token)
     with urllib.request.urlopen(query, timeout=30) as response:
-        return json.load(response)
+        return response.read() if raw else json.load(response)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=("status", "runs", "jobs", "draft"))
+    parser.add_argument("operation", choices=("status", "runs", "jobs", "logs", "draft"))
     parser.add_argument("--run-id")
+    parser.add_argument("--job-id")
     arguments = parser.parse_args()
     if arguments.operation == "status":
         result = request("")
@@ -62,6 +64,13 @@ def main() -> None:
     elif arguments.operation == "jobs":
         result = request(f"actions/runs/{arguments.run_id}/jobs")
         print(json.dumps(result["jobs"]))
+    elif arguments.operation == "logs":
+        content = request(f"actions/jobs/{arguments.job_id}/logs", raw=True)
+        Path("reports").mkdir(exist_ok=True)
+        destination = Path("reports") / f"github-job-{arguments.job_id}.log"
+        destination.write_bytes(content)
+        print(destination)
+        print(content.decode("utf-8")[-18000:])
     else:
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         result = request(
