@@ -493,6 +493,3 @@ Backend-specific mechanisms remain implementation details, while backend-specifi
 - Unit tests mock external connectivity and isolate file input/output in a
   separate `TemporaryDirectory`.
 - Runtime packages and tests follow `docs/development/architecture.md`. Tests mirror production subsystem boundaries; reusable fixtures live in dedicated support modules.
-
-
-This file is only useful for the first conversasion, convert this file into proper documentation in the repo

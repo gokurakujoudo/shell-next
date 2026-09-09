@@ -1,0 +1,42 @@
+site_name: shell-next
+site_description: Persistent asynchronous shell sessions, with deterministic application tests.
+site_url: https://gokurakujoudo.github.io/shell-next/
+repo_url: https://github.com/gokurakujoudo/shell-next
+repo_name: GitHub
+edit_uri: edit/codex/impl/docs/
+strict: true
+theme:
+  name: readthedocs
+  logo: assets/shell-next-logo.png
+  highlightjs: false
+  navigation_depth: 3
+  prev_next_buttons_location: bottom
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Usage guide: usage.md
+  - Backend support: backends.md
+  - Testing applications: testing.md
+  - Troubleshooting: troubleshooting.md
+  - Development:
+      - Architecture: development/architecture.md
+      - Specification: development/specification.md
+      - Release gates: development/release.md
+      - Documentation: development/documentation.md
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+extra_css:
+  - assets/stylesheets/brand.css
+copyright: shell-next contributors · MIT license
+validation:
+  nav:
+    omitted_files: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn

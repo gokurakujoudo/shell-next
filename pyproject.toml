@@ -20,10 +20,12 @@ classifiers = [
 ]
 
 [project.urls]
+Documentation = "https://gokurakujoudo.github.io/shell-next/"
 Repository = "https://github.com/gokurakujoudo/shell-next"
 Issues = "https://github.com/gokurakujoudo/shell-next/issues"
 
 [project.optional-dependencies]
+docs = ["mkdocs==1.6.1"]
 dev = ["pytest>=9", "pytest-asyncio>=1", "pytest-cov>=7", "ruff>=0.15", "mypy>=1.19", "build>=1.4", "twine>=6"]
 
 [tool.hatch.build.targets.wheel]

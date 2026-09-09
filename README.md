@@ -1,6 +1,13 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/gokurakujoudo/shell-next/codex/impl/shell-next-logo.png" alt="shell-next logo" width="300">
+</p>
+
 # shell-next
 
 Persistent asynchronous Bash, PowerShell, and cmd sessions for Python 3.14+.
+
+[Documentation](https://gokurakujoudo.github.io/shell-next/) ·
+[PyPI](https://pypi.org/project/shell-next/) · [Wiki drafts](wiki/README.md)
 
 ```python
 from shell_next import Backend, ProcessCommand, SessionConfig, use_shell_session

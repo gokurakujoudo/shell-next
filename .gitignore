@@ -6,6 +6,7 @@
 /build/
 /dist/
 /reports/
+/site/
 /*.egg-info/
 **/__pycache__/
 *.py[cod]

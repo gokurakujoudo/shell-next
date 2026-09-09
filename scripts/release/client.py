@@ -34,7 +34,7 @@ def request(
     method: str | None = None,
 ) -> Any:
     query = urllib.request.Request(
-        f"https://api.github.com/repos/{REPOSITORY}/" + endpoint,
+        f"https://api.github.com/repos/{REPOSITORY}" + ("/" + endpoint if endpoint else ""),
         data=None if payload is None else json.dumps(payload).encode(),
         headers={
             "Accept": "application/vnd.github+json",
