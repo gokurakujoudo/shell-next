@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1
+
+- Add CI, required coverage, PyPI, Python-version, and license badges to the README.
+- Include branded, searchable documentation and review-ready wiki drafts.
+- Deploy GitHub Pages from `main` and keep logo/edit links valid after branch cleanup.
+- Add documentation build tooling and generated-site validation.
+- Make release uploads independent of Windows progress-display encoding.
+
+The package runtime API is unchanged from 0.1.0.
+
 ## 0.1.0
 
 - Persistent Bash, PowerShell 7, and cmd sessions for Python 3.14+.

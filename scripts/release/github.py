@@ -23,7 +23,7 @@ def main() -> None:
             )
         )
     elif arguments.operation == "runs":
-        result = request("actions/runs?branch=codex%2Fimpl&per_page=5")
+        result = request("actions/runs?per_page=5")
         print(
             json.dumps(
                 [

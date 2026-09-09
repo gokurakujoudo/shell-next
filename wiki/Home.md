@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/gokurakujoudo/shell-next/codex/impl/shell-next-logo.png" alt="shell-next logo" width="280">
+  <img src="https://raw.githubusercontent.com/gokurakujoudo/shell-next/main/shell-next-logo.png" alt="shell-next logo" width="280">
 </p>
 
 # shell-next

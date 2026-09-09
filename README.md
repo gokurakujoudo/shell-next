@@ -1,8 +1,14 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/gokurakujoudo/shell-next/codex/impl/shell-next-logo.png" alt="shell-next logo" width="300">
+  <img src="https://raw.githubusercontent.com/gokurakujoudo/shell-next/main/shell-next-logo.png" alt="shell-next logo" width="300">
 </p>
 
 # shell-next
+
+[![CI](https://github.com/gokurakujoudo/shell-next/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gokurakujoudo/shell-next/actions/workflows/ci.yml?query=branch%3Amain)
+[![Coverage: 100% required](https://img.shields.io/badge/coverage-100%25%20required-brightgreen)](https://github.com/gokurakujoudo/shell-next/actions/workflows/ci.yml?query=branch%3Amain)
+[![PyPI](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fpypi.org%2Fpypi%2Fshell-next%2Fjson&query=%24.info.version&label=pypi&prefix=v&color=blue&cacheSeconds=300)](https://pypi.org/project/shell-next/)
+[![Python](https://img.shields.io/pypi/pyversions/shell-next)](https://pypi.org/project/shell-next/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/gokurakujoudo/shell-next/blob/main/LICENSE)
 
 Persistent asynchronous Bash, PowerShell, and cmd sessions for Python 3.14+.
 

@@ -3,7 +3,7 @@
 <div class="hero">
   <img src="assets/shell-next-logo.png" alt="shell-next logo" width="220" height="220">
   <div>
-    <p class="version">shell-next 0.1.0 · Python 3.14+</p>
+    <p class="version">shell-next 0.1.1 · Python 3.14+</p>
     <p>Persistent asynchronous Bash, PowerShell, and cmd sessions. Own commands through completion, interact with prompts, and test the same application code with a deterministic mock.</p>
     <a class="button" href="getting-started/">Get started</a>
     <a class="button secondary" href="https://github.com/gokurakujoudo/shell-next">View on GitHub</a>

@@ -30,3 +30,8 @@ and run `python -m scripts.release.publish`. This verifies the complete successf
 quality run, builds both distributions, checks metadata, stages GitHub assets,
 publishes through the existing Twine configuration, and publishes the GitHub
 release. An existing version or asset with different bytes is never overwritten.
+
+Prepare the version and changelog through a pull request to `main`. After its
+squash merge, create `release/<version>` from `main` and push that branch. Publish
+from the release branch only after the complete quality workflow passes for its
+exact commit. Documentation continues deploying from `main`.

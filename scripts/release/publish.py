@@ -33,6 +33,11 @@ def main() -> None:
         "version"
     ]
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    _, heading, section = changelog.partition(f"## {version}\n")
+    if not heading:
+        raise SystemExit("The requested version has no changelog section")
+    notes = section.split("\n## ", 1)[0].strip()
     directory = root / "dist" / version
     subprocess.run([sys.executable, "-m", "build", "--outdir", str(directory)], check=True)
     files = [
@@ -61,7 +66,7 @@ def main() -> None:
                 "name": f"shell-next {version}",
                 "draft": True,
                 "prerelease": False,
-                "body": (root / "CHANGELOG.md").read_text(encoding="utf-8")
+                "body": notes
                 + f"\n\nTested commit: `{sha}`. "
                 + f"Install: `python -m pip install shell-next=={version}`.\n",
             },
@@ -84,6 +89,7 @@ def main() -> None:
                 "twine",
                 "upload",
                 "--non-interactive",
+                "--disable-progress-bar",
                 *(str(path) for path in missing),
             ],
             check=True,
