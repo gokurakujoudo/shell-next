@@ -1,0 +1,141 @@
+"""In-memory backend adapter running the production command lifecycle."""
+
+import asyncio
+from collections import deque
+from typing import TYPE_CHECKING
+
+from shell_next.backends.mock.scenario import (
+    Advance,
+    Emit,
+    Failure,
+    MockExpectation,
+    MockScenario,
+    Receive,
+)
+from shell_next.errors import InputError, MockUnexpectedInputError, SessionProtocolError
+from shell_next.models.commands import Command
+from shell_next.models.results import BackendStatus, CleanupReport
+
+if TYPE_CHECKING:
+    from shell_next.frontend.handle import CommandHandle
+    from shell_next.frontend.session import ShellSession
+
+
+class MockDriver:
+    """Deterministic transport that cannot start subprocesses or write files.
+
+    :param scenario: Ordered commands, input, and output expectations.
+    :param session: Owning frontend for simulated persistent state.
+    """
+
+    def __init__(self, scenario: MockScenario, session: ShellSession) -> None:
+        """Initialize pure in-memory execution state.
+
+        :param scenario: Strict expected behavior.
+        :param session: Owning frontend.
+        """
+        self.scenario = scenario
+        self.session = session
+        self.reserved: deque[MockExpectation] = deque()
+        self.active: MockExpectation | None = None
+        self.inputs: deque[bytes | None] = deque()
+        self.changed = asyncio.Event()
+
+    async def start(self) -> None:
+        """Enter the mock without consulting or changing ambient process state."""
+
+    def reserve(self, command: Command) -> None:
+        """Match and reserve the next command in deterministic FIFO order.
+
+        :param command: Submitted process or native script description.
+        :raises MockUnexpectedCommandError: No strict expectation matches.
+        """
+        self.reserved.append(self.scenario.reserve(command))
+
+    async def prepare(self, handle: CommandHandle) -> None:
+        """Adopt the reserved expectation without filesystem or subprocess work.
+
+        :param handle: Command receiving simulated transport behavior.
+        """
+        self.active = self.reserved.popleft()
+        self.inputs.clear()
+
+    async def execute(self, handle: CommandHandle) -> BackendStatus:
+        """Emit deterministic events, wait for input, and advance only virtual time.
+
+        :param handle: Command receiving output and readiness.
+        :returns: Configured backend-native status.
+        :raises MockUnexpectedInputError: Submitted input differs from the scenario.
+        :raises TimeoutError: Virtual execution reaches its configured deadline.
+        :raises InputError: An input failure was configured.
+        :raises OSError: A startup failure was configured.
+        :raises SessionProtocolError: A session loss was configured.
+        """
+        assert self.active is not None
+        handle.ready.set()
+        elapsed = 0.0
+        for step in self.active.steps:
+            if isinstance(step, Emit):
+                await handle.emit(step.stream, step.data)
+            elif isinstance(step, Receive):
+                while not self.inputs:
+                    self.changed.clear()
+                    await self.changed.wait()
+                if self.inputs.popleft() != step.data:
+                    raise MockUnexpectedInputError("Input did not match the next scenario step")
+            elif isinstance(step, Advance):
+                deadline = handle.options.timeouts.execution
+                if deadline is not None and elapsed + step.seconds >= deadline:
+                    self.scenario.elapsed += max(0, deadline - elapsed)
+                    raise TimeoutError("Virtual command deadline expired")
+                elapsed += step.seconds
+                self.scenario.elapsed += step.seconds
+            elif isinstance(step, Failure):
+                if step.kind == "input":
+                    raise InputError("Simulated input failure")
+                if step.kind == "startup":
+                    raise OSError("Simulated startup failure")
+                if step.kind == "session":
+                    raise SessionProtocolError("Simulated session loss")
+                handle.captures["stdout"].error = "Simulated capture failure"
+        if self.active.cwd is not None:
+            self.session.cwd = self.active.cwd
+        for name, value in self.active.env:
+            if value is None:
+                self.session.environment.pop(name, None)
+            else:
+                self.session.environment[name] = value
+        return self.active.status
+
+    async def send(self, data: bytes) -> None:
+        """Queue one in-memory input submission without retaining a history copy.
+
+        :param data: Raw expected business input.
+        """
+        self.inputs.append(data)
+        self.changed.set()
+
+    async def close_stdin(self) -> None:
+        """Queue an explicit in-memory EOF operation."""
+        self.inputs.append(None)
+        self.changed.set()
+
+    async def finish(self) -> None:
+        """Discard transient input payloads after finalization."""
+        self.inputs.clear()
+        self.active = None
+
+    async def stop(self) -> CleanupReport:
+        """Simulate forced session invalidation without signals or real processes.
+
+        :returns: Deterministic successful containment report.
+        """
+        return CleanupReport(forced=True)
+
+    async def close(self) -> CleanupReport:
+        """Release in-memory input state without any operating-system side effect.
+
+        :returns: Deterministic shutdown report.
+        """
+        self.inputs.clear()
+        return CleanupReport()

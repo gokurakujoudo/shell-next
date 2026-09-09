@@ -1,0 +1,9 @@
+{
+  "commit": null,
+  "rhel8_reference": false,
+  "interactive_sudo": false,
+  "windows_contracts": false,
+  "leak_checks": false,
+  "coverage_100": false,
+  "installed_wheel": false
+}

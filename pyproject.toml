@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shell-next"
+version = "0.1.0a1"
+description = "Persistent asynchronous shell sessions with deterministic test doubles"
+readme = "README.md"
+requires-python = ">=3.14"
+license = "MIT"
+authors = [{name = "shell-next contributors"}]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Repository = "https://github.com/gokurakujoudo/shell-next"
+Issues = "https://github.com/gokurakujoudo/shell-next/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=9", "pytest-asyncio>=1", "pytest-cov>=7", "ruff>=0.15", "mypy>=1.19", "build>=1.4", "twine>=6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shell_next"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers"
+markers = ["integration: starts real operating-system processes", "sudo: requires a configured sudo test account"]
+
+[tool.coverage.run]
+branch = true
+source = ["shell_next"]
+parallel = true
+relative_files = true
+patch = ["subprocess"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["ASYNC109"] # Public execution deadlines are part of the specified API.
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["src", "tests", "scripts"]

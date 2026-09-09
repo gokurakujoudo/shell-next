@@ -1,0 +1,17 @@
+/.coverage
+/.mypy_cache/
+/.pytest_cache/
+/pytest-cache-files-*/
+/.ruff_cache/
+/build/
+/dist/
+/reports/
+/*.egg-info/
+**/__pycache__/
+*.py[cod]
+/.codex_tmp/
+
+/venv/
+/.venv/
+/.coverage.*
+
