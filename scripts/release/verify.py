@@ -5,7 +5,7 @@ import subprocess
 import tomllib
 from pathlib import Path
 
-from scripts.release.github import request
+from scripts.release.client import request
 
 
 def main() -> None:

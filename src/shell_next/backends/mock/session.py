@@ -1,10 +1,13 @@
 """First-class session test double using the production ownership frontend."""
 
+import ntpath
 import posixpath
+import re
 from dataclasses import replace
 
 from shell_next.backends.mock.driver import MockDriver
 from shell_next.backends.mock.scenario import MockScenario
+from shell_next.backends.mock.state import state_access
 from shell_next.errors import ConfigurationError
 from shell_next.frontend.session import ShellSession
 from shell_next.models.config import SessionConfig
@@ -90,8 +93,10 @@ class MockShellSession(ShellSession):
 
         :param path: Virtual path; POSIX relative paths resolve against virtual cwd.
         """
-        self.cwd = posixpath.normpath(posixpath.join(self.cwd or "/", path))
-        self.record("chdir", path)
+        async with state_access(self):
+            paths = posixpath if self.config.backend == Backend.BASH else ntpath
+            self.cwd = paths.normpath(paths.join(self.cwd or "/", path))
+            self.record("chdir", path)
 
     async def set_env(self, name: str, value: str) -> None:
         """Update only the virtual exported environment.
@@ -100,26 +105,31 @@ class MockShellSession(ShellSession):
         :param value: NUL-free environment value.
         :raises ConfigurationError: The name or value is invalid.
         """
-        if not name or "=" in name or "\0" in name + value:
-            raise ConfigurationError("Invalid environment name or value")
-        self.environment[name] = value
-        self.record("set_env", name)
+        async with state_access(self):
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None or "\0" in value:
+                raise ConfigurationError("Invalid portable environment name or value")
+            self.environment[name] = value
+            self.record("set_env", name)
 
     async def unset_env(self, name: str) -> None:
         """Remove an exported variable from the virtual environment.
 
         :param name: Virtual variable name.
         """
-        self.environment.pop(name, None)
-        self.record("unset_env", name)
+        async with state_access(self):
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
+                raise ConfigurationError("Invalid portable environment name")
+            self.environment.pop(name, None)
+            self.record("unset_env", name)
 
     async def get_cwd(self) -> str:
         """Read the virtual working directory without calling os.getcwd.
 
         :returns: Virtual directory string.
         """
-        self.record("get_cwd")
-        return self.cwd or "/"
+        async with state_access(self):
+            self.record("get_cwd")
+            return self.cwd or "/"
 
     async def get_env(self, name: str | None = None) -> str | dict[str, str] | None:
         """Read virtual exported state without consulting os.environ.
@@ -127,13 +137,15 @@ class MockShellSession(ShellSession):
         :param name: Specific variable or None for a copied environment view.
         :returns: Value, missing marker, or copied environment dictionary.
         """
-        self.record("get_env", name)
-        return self.environment.get(name) if name is not None else dict(self.environment)
+        async with state_access(self):
+            self.record("get_env", name)
+            return self.environment.get(name) if name is not None else dict(self.environment)
 
     async def ping(self) -> bool:
         """Observe virtual session health without consuming a user expectation.
 
         :returns: Whether the mock remains usable.
         """
-        self.record("ping")
-        return self.is_usable
+        async with state_access(self):
+            self.record("ping")
+            return self.is_usable

@@ -10,12 +10,16 @@ from tempfile import TemporaryDirectory
 
 def main() -> None:
     root = Path(__file__).resolve().parents[2]
-    subprocess.run([sys.executable, "-m", "build"], cwd=root, check=True)
-    wheels = list((root / "dist").glob("*.whl"))
-    if len(wheels) != 1:
-        raise SystemExit("Exactly one current wheel is required for installation validation")
     with TemporaryDirectory(prefix="shell-next-wheel-") as temporary:
         directory = Path(temporary)
+        subprocess.run(
+            [sys.executable, "-m", "build", "--outdir", str(directory / "dist")],
+            cwd=root,
+            check=True,
+        )
+        wheels = list((directory / "dist").glob("*.whl"))
+        if len(wheels) != 1:
+            raise SystemExit("Exactly one current wheel is required for installation validation")
         venv.EnvBuilder(with_pip=True).create(directory / "venv")
         interpreter = (
             directory / "venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")

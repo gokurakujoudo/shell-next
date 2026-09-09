@@ -1,7 +1,8 @@
 # First release gates
 
 No stable tag or PyPI publication is permitted until these gates are verified.
-The version remains an alpha while implementation and validation are incomplete.
+Candidate source metadata may carry the intended version while publication
+remains blocked until all evidence passes for that exact commit.
 
 - Common behavioral contracts pass for Mock, Bash, PowerShell 7, and cmd.
 - Bash reference testing includes RHEL 8, persistent state, large simultaneous
@@ -23,3 +24,9 @@ The optional GitHub publishing workflow uses an environment named `pypi` and
 the PyPA trusted publisher action. Local publication uses Twine after the same
 exact-commit verification. Credentials are never committed to the repository or
 printed by release tooling. A draft release does not establish that gates passed.
+
+For an authorized local release, start with a clean checkout of the tested commit
+and run `python -m scripts.release.publish`. This verifies the complete successful
+quality run, builds both distributions, checks metadata, stages GitHub assets,
+publishes through the existing Twine configuration, and publishes the GitHub
+release. An existing version or asset with different bytes is never overwritten.

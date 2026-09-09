@@ -3,45 +3,15 @@
 import argparse
 import io
 import json
-import os
-import subprocess
-import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Any
 
-
-def request(endpoint: str, payload: dict[str, object] | None = None, *, raw: bool = False) -> Any:
-    token = os.environ.get("GH_TOKEN")
-    if token is None:
-        result = subprocess.run(
-            ["git", "credential", "fill"],
-            input="protocol=https\nhost=github.com\n\n",
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        values = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
-        token = values["password"]
-    query = urllib.request.Request(
-        "https://api.github.com/repos/gokurakujoudo/shell-next/" + endpoint,
-        data=None if payload is None else json.dumps(payload).encode(),
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "shell-next-release",
-            "Content-Type": "application/json",
-        },
-    )
-    query.add_unredirected_header("Authorization", "Bearer " + token)
-    with urllib.request.urlopen(query, timeout=30) as response:
-        return response.read() if raw else json.load(response)
+from scripts.release.client import request
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "operation", choices=("status", "runs", "jobs", "logs", "coverage", "draft")
-    )
+    parser.add_argument("operation", choices=("status", "runs", "jobs", "logs", "coverage"))
     parser.add_argument("--run-id")
     parser.add_argument("--job-id")
     arguments = parser.parse_args()
@@ -100,22 +70,6 @@ def main() -> None:
                 with zipfile.ZipFile(io.BytesIO(data)) as archive:
                     (destination / ".coverage").write_bytes(archive.read(".coverage"))
                 print(destination)
-    else:
-        sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-        result = request(
-            "releases",
-            {
-                "tag_name": "v0.1.0a1",
-                "target_commitish": sha,
-                "name": "shell-next 0.1.0a1 — release candidate",
-                "draft": True,
-                "prerelease": True,
-                "body": "Implementation candidate. Publication remains blocked until all "
-                "documented release gates pass. See docs/development/release.md for required "
-                "cross-platform, sudo, and coverage evidence.",
-            },
-        )
-        print(json.dumps({key: result[key] for key in ("id", "html_url", "draft", "tag_name")}))
 
 
 if __name__ == "__main__":

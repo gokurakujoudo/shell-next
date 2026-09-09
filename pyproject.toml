@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "shell-next"
-version = "0.1.0a1"
+version = "0.1.0"
 description = "Persistent asynchronous shell sessions with deterministic test doubles"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
 authors = [{name = "shell-next contributors"}]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Framework :: AsyncIO",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",

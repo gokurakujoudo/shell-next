@@ -127,14 +127,7 @@ class ShellSession:
         :raises SessionReentrancyError: A scoped owner would deadlock itself.
         :raises TypeError: The command is not an explicit command description.
         """
-        if self.state == SessionState.BROKEN:
-            raise SessionBrokenError("The interrupted session cannot be reused")
-        if not self.is_usable:
-            raise SessionClosedError("Session is not open")
-        if asyncio.current_task() in self.scopes:
-            raise SessionReentrancyError("A scoped command already owns this session")
-        if self.pending and self.config.concurrency == ConcurrencyPolicy.REJECT:
-            raise SessionBusyError("Session already owns a command")
+        self.validate_submission()
         if not isinstance(command, (ProcessCommand, SessionScript)):
             raise TypeError("Use ProcessCommand or SessionScript")
         resolved = options or self.config.defaults
@@ -151,6 +144,23 @@ class ShellSession:
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
         return handle
+
+    def validate_submission(self) -> None:
+        """Validate lifecycle and ownership before submitting work or a mock state operation.
+
+        :raises SessionBrokenError: The session was invalidated.
+        :raises SessionClosedError: The session is not open.
+        :raises SessionReentrancyError: This task already owns a scoped command.
+        :raises SessionBusyError: Immediate rejection applies to an occupied session.
+        """
+        if self.state == SessionState.BROKEN:
+            raise SessionBrokenError("The interrupted session cannot be reused")
+        if not self.is_usable:
+            raise SessionClosedError("Session is not open")
+        if asyncio.current_task() in self.scopes:
+            raise SessionReentrancyError("A scoped command already owns this session")
+        if self.pending and self.config.concurrency == ConcurrencyPolicy.REJECT:
+            raise SessionBusyError("Session already owns a command")
 
     async def run(
         self,

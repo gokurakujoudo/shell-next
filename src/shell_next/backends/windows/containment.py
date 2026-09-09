@@ -50,11 +50,13 @@ class WindowsJob:
             )
             # Win32 PROCESS_SET_QUOTA | PROCESS_TERMINATE: minimum assignment rights.
             handle = self.kernel.OpenProcess(0x0100 | 0x0001, False, process.pid)
+            if not handle:
+                self.close()
+                raise ctypes.WinError(ctypes.get_last_error())
             try:
                 if (
                     not self.job
                     or not configured
-                    or not handle
                     or not self.kernel.AssignProcessToJobObject(self.job, handle)
                 ):
                     raise ctypes.WinError(ctypes.get_last_error())
@@ -62,8 +64,7 @@ class WindowsJob:
                 self.close()
                 raise
             finally:
-                if handle:
-                    self.kernel.CloseHandle(handle)
+                self.kernel.CloseHandle(handle)
 
     def terminate(self, force: bool = True) -> None:
         """Signal the entire containment unit, including background descendants.
