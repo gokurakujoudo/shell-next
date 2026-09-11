@@ -23,7 +23,7 @@ async def inspect_repository(config: SessionConfig):
     async with use_shell_session(config) as shell:
         await shell.chdir("/srv/project")
         result = await shell.run(ProcessCommand("git", ("status", "--short")), check=True)
-        return result.stdout.tail
+        return result.stdout_str()
 ```
 
 Use `ProcessCommand` for executable arguments that must remain structural. Use
@@ -79,7 +79,14 @@ and output in memory. Unmatched commands and unconsumed strict expectations fail
 
 ## Capture and capabilities
 
-Output is bytes. Each stream retains a bounded tail (64 KiB by default), and
+Results retain the original `ProcessCommand` or `SessionScript` as `result.command`.
+Use `result.stdout_str()` and `result.stderr_str()` for decoded tail text (UTF-8
+with replacement by default), or access raw bytes through `result.stdout.tail`
+and `result.stderr.tail`.
+
+Set `SessionConfig(capture=CaptureConfig(tail_bytes=4096))` to retain at most
+4 KiB per stream; the default is 65,536 bytes (64 KiB), and zero retains no tail.
+Each stream retains its own bounded tail, and
 literal prompt matching uses a separate bounded window. Slow event subscribers
 receive an overflow error without blocking primary capture. Opt into full capture
 with `CaptureConfig(directory=existing_directory)`. Results distinguish received

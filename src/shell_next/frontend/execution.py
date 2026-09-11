@@ -186,6 +186,7 @@ async def run_owned(handle: CommandHandle) -> None:
             secondary_errors=tuple(errors),
             tags=tuple(handle.options.tags.items()),
             session_reusable=session.state == SessionState.OPEN,
+            command=handle.command,
         )
         handle.result = result
         handle.state = "finished"

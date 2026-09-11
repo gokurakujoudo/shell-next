@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from shell_next.models.commands import Command
 from shell_next.models.input import InputSummary, StreamName
 from shell_next.models.privilege import PrivilegeReport
 from shell_next.models.state import Backend, Outcome, SessionState
@@ -108,6 +109,8 @@ class CommandResult:
     :param secondary_errors: Additional failures that did not replace the primary outcome.
     :param tags: Immutable user key/value pairs.
     :param session_reusable: Session protocol was healthy when finalization ended.
+    :param command: Original submitted command, excluded from repr. None is allowed
+        for manually constructed legacy results; session results always retain it.
     """
 
     session_id: str
@@ -127,6 +130,29 @@ class CommandResult:
     secondary_errors: tuple[str, ...] = ()
     tags: tuple[tuple[str, str], ...] = ()
     session_reusable: bool = True
+    command: Command | None = field(default=None, repr=False)
+
+    def stdout_str(self, encoding: str = "utf-8", errors: str = "replace") -> str:
+        """Decode the retained stdout tail without reading a capture file.
+
+        :param encoding: Python text codec name; defaults to UTF-8.
+        :param errors: Decode error handler; replacement tolerates truncated characters.
+        :returns: Tail text, possibly incomplete when byte capture was truncated.
+        :raises UnicodeError: Decoding fails with the selected error handler.
+        :raises LookupError: The codec or required error handler is unknown.
+        """
+        return self.stdout.tail.decode(encoding, errors)
+
+    def stderr_str(self, encoding: str = "utf-8", errors: str = "replace") -> str:
+        """Decode the retained stderr tail without reading a capture file.
+
+        :param encoding: Python text codec name; defaults to UTF-8.
+        :param errors: Decode error handler; replacement tolerates truncated characters.
+        :returns: Tail text, possibly incomplete when byte capture was truncated.
+        :raises UnicodeError: Decoding fails with the selected error handler.
+        :raises LookupError: The codec or required error handler is unknown.
+        """
+        return self.stderr.tail.decode(encoding, errors)
 
 
 @dataclass(frozen=True)

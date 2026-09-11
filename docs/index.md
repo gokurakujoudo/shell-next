@@ -29,7 +29,10 @@ environment variables, and native shell state persist between normal commands.
 ## Built for observable execution
 
 - **Bounded capture.** Separate stdout/stderr tails, optional durable files, and
-  independent subscribers that cannot block primary capture.
+  independent subscribers that cannot block primary capture. Configure tail
+  limits with `CaptureConfig(tail_bytes=...)`; the default is 64 KiB per stream.
+- **Convenient results.** Retain original commands and decode stdout/stderr
+  tails with `stdout_str()` and `stderr_str()`.
 - **Explicit ownership.** Cancelling an observation leaves execution running;
   cancelling a command owner initiates cleanup.
 - **Deterministic tests.** Inject `MockShellSession` through the normal session

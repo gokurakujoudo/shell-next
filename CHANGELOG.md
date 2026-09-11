@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Retain the original submitted command in finalized results, including failures
+  and commands stopped before execution.
+- Add `CommandResult.stdout_str()` and `stderr_str()` to decode retained tails
+  with configurable encoding and error handling (UTF-8 with replacement by default).
+- Document and verify configurable stdout/stderr tail bounds through
+  `CaptureConfig.tail_bytes`, including the existing 64 KiB per-stream default.
+
 ## 0.1.1
 
 - Add CI, required coverage, PyPI, Python-version, and license badges to the README.
