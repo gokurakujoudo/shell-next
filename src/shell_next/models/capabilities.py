@@ -2,11 +2,12 @@
 
 from dataclasses import dataclass
 
+from shell_next.models.representation import RecordRepr
 from shell_next.models.state import Backend
 
 
-@dataclass(frozen=True)
-class SessionCapabilities:
+@dataclass(frozen=True, repr=False)
+class SessionCapabilities(RecordRepr):
     """Boolean capabilities with conservative interruption and terminal guarantees.
 
     :param persistent_state: Shell state survives normal commands.

@@ -3,10 +3,11 @@
 from dataclasses import dataclass
 
 from shell_next.errors import ConfigurationError
+from shell_next.models.representation import RecordRepr
 
 
-@dataclass(frozen=True)
-class ProcessCommand:
+@dataclass(frozen=True, repr=False)
+class ProcessCommand(RecordRepr):
     """An executable and structural arguments, never interpolated as shell syntax.
 
     :param executable: Executable name or path; must be nonempty and NUL-free.
@@ -26,8 +27,8 @@ class ProcessCommand:
             raise ConfigurationError("Executable and arguments must be NUL-free")
 
 
-@dataclass(frozen=True)
-class SessionScript:
+@dataclass(frozen=True, repr=False)
+class SessionScript(RecordRepr):
     """Native script text executed in the persistent shell's scope.
 
     :param text: Backend-native text; NUL is not accepted.

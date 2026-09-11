@@ -226,6 +226,26 @@ Every command ends with one immutable `CommandResult`.
 
 The result identifies the session, command, backend, command kind, overall outcome, success state, backend status, timing data, stdout result, stderr result, input summary, privilege report, cleanup report, accumulated secondary errors, user tags, and whether the session remained reusable.
 
+`CommandResult.command` retains the original submitted `ProcessCommand` or
+`SessionScript` on every finalization path, including failure and cancellation
+before execution. Preserve argument boundaries and script whitespace without
+substituting backend wrappers. Exclude the command from the result repr. For
+compatibility, manually constructed results may omit it and receive `None`.
+
+`stdout_str(encoding="utf-8", errors="replace")` and
+`stderr_str(encoding="utf-8", errors="replace")` decode only the retained byte
+tails, without file I/O, trimming, or changing capture accounting. Empty tails
+decode to empty strings. Callers may select Python codecs and error handlers;
+strict decoding raises on invalid bytes, including partial multibyte characters
+at a truncation boundary. Unknown codecs or required error handlers raise
+`LookupError`. Replacement is the default so truncated tails remain readable.
+
+`SessionConfig.capture` accepts `CaptureConfig(tail_bytes=...)`, with a maximum
+of 65,536 retained bytes per stream by default. Each stream independently keeps
+its latest bytes up to the limit. Zero disables tail retention; negative values
+are invalid. Output continues to drain and count after the limit is reached.
+File capture and prompt matching remain independent of the tail limit.
+
 The normalized outcome may represent normal exit, timeout, caller stop, startup failure, input failure, output failure, session loss, or internal execution failure.
 
 A process exit code must remain separate from the package's normalized outcome.
@@ -468,7 +488,25 @@ The public contract must remain centered on `use_shell_session(config)`, `run()`
 
 Backend-specific mechanisms remain implementation details, while backend-specific limitations remain explicit through capabilities and typed errors rather than hidden behavioral differences.
 
-## 25. Quality
+## 25. Diagnostic representations
+
+Public dataclass records expose named fields with bounded strings, bytes,
+collections, and nesting. Enum fields use symbolic names. Large byte previews
+include their full size. Formatting never mutates values or capture bounds.
+Nested and recursive records must terminate with explicit ellipses.
+
+Respect every `repr=False` field, including authentication providers, input
+payloads, and original commands retained by results. Omit configuration/snapshot
+environment values and mock environment updates. Ordinary commands, arguments,
+and output previews are still visible; repr is not a general secret scrubber or
+a serialization contract.
+
+Live sessions and command handles show identifiers, lifecycle state, and relevant
+counts rather than object memory addresses. Their reprs read stored state only,
+without shell queries, scheduling, file access, or provider calls. Formatting is
+diagnostic and does not establish new thread-safety or snapshot guarantees.
+
+## 26. Quality
 
 - Production class and function names must describe their purpose without an
   underscore prefix. Only Python protocol methods may use required dunder

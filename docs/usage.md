@@ -16,7 +16,7 @@ async def work(config: SessionConfig):
         await shell.set_env("BUILD_MODE", "release")
         await shell.run(SessionScript("answer=42"), check=True)  # Bash syntax
         result = await shell.run(ProcessCommand("git", ("status", "--short")), check=True)
-        return result.stdout.tail.decode("utf-8")
+        return result.stdout_str()
 ```
 
 `ProcessCommand` preserves argument boundaries, including shell metacharacters.
@@ -76,6 +76,64 @@ reports last-success, native exit code, and terminating-error status separately.
 `check=True` raises a typed exception after the result is finalized; the exception
 retains that result. Error classes are available from `shell_next.errors`.
 
+`result.command` retains the exact submitted `ProcessCommand` (executable and
+argument tuple) or `SessionScript` (including original whitespace), even on
+failure or cancellation before execution. It contains no generated backend
+wrapper and is excluded from the result's repr. The field defaults to `None`
+only for compatibility with manually constructed legacy results.
+
+`result.stdout_str(encoding="utf-8", errors="replace")` and
+`result.stderr_str(encoding="utf-8", errors="replace")` decode the retained raw
+tails. They preserve whitespace and never read capture files. An empty tail
+returns an empty string. Replacement decoding tolerates malformed bytes and a
+multibyte character cut by the tail boundary; use `errors="strict"` to raise
+`UnicodeDecodeError`, or select another Python codec such as `encoding="cp1252"`.
+Raw bytes and completeness accounting remain available on `stdout` and `stderr`.
+
+Configure `SessionConfig(capture=CaptureConfig(tail_bytes=4096))` to keep the last
+4,096 bytes independently for stdout and stderr. The default maximum is 65,536
+bytes (64 KiB) per stream. Zero retains no tail, negative limits are rejected,
+and output beyond the limit is still drained and counted. Tail truncation does
+not by itself make execution unsuccessful. Full capture files and prompt windows
+use their own existing policies.
+
+<!-- python-doc-exec -->
+```python
+import asyncio
+
+from shell_next import (
+    CaptureConfig,
+    Emit,
+    MockExpectation,
+    MockScenario,
+    MockShellSession,
+    ProcessCommand,
+    SessionConfig,
+    use_shell_session,
+)
+
+
+async def inspect_result():
+    command = ProcessCommand("example", ("argument with spaces",))
+    scenario = MockScenario(
+        [
+            MockExpectation(command, (Emit(b"prefix:done"), Emit(b"warning", "stderr"))),
+        ]
+    )
+    config = SessionConfig(capture=CaptureConfig(tail_bytes=4))
+    config._session_cls = MockShellSession.configured(scenario)
+    async with use_shell_session(config) as shell:
+        result = await shell.run(command)
+    assert result.command is command
+    assert result.stdout_str() == "done"
+    assert result.stderr_str() == "ning"
+    assert result.stdout.received == 11
+    assert not result.stdout.complete
+
+
+asyncio.run(inspect_result())
+```
+
 Stdout and stderr have independent results. Memory tails, prompt windows, and
 subscriber queues are bounded. To preserve full output, set
 `CaptureConfig(directory=existing_directory)`. Unique files are created without
@@ -87,6 +145,36 @@ storage failure, and forced cleanup. Explicit discard still counts received byte
 `OutputSubscriberError`; they cannot stop primary capture. Events include stream,
 sequence, timestamp, and per-stream byte offset. They do not establish a global
 ordering between independently produced stdout and stderr bytes.
+
+## Diagnostic representations
+
+`repr()` on public commands, configuration, input steps, results, snapshots,
+capabilities, and mock scenarios shows the class name and named fields. Enum
+values appear as names such as `Outcome.EXITED`. Long strings, byte payloads,
+collections, and nested records are abbreviated with `...`; large byte previews
+include the full byte count. Stored values and capture limits are unchanged.
+
+Sessions show their identifier, backend, lifecycle state, and pending count.
+Command handles show their identifier, state, stdout/stderr byte counts, and
+whether the result is finalized. Repr reads in-memory state without executing
+commands, waiting, reading files, or calling password providers.
+
+Input payloads, password providers, configuration and snapshot environments,
+mock environment updates, and the original command inside a result remain hidden.
+Commands and output previews may still contain caller-supplied sensitive text;
+repr is a diagnostic display, not a serialization or general-purpose redactor.
+
+<!-- python-doc-exec -->
+```python
+from shell_next import OutputResult, ProcessCommand
+
+command = ProcessCommand("git", ("status", "--short"))
+assert repr(command) == "ProcessCommand(executable='git', args=('status', '--short'))"
+output = OutputResult(received=1000, tail=b"x" * 1000, complete=False)
+assert "(1000 bytes)" in repr(output)
+assert "complete=False" in repr(output)
+assert len(output.tail) == 1000
+```
 
 ## Sudo
 

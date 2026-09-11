@@ -21,6 +21,7 @@ from shell_next.models.commands import Command
 from shell_next.models.config import CommandOptions
 from shell_next.models.input import InputSummary, MatchStream, StreamName
 from shell_next.models.privilege import PrivilegeReport
+from shell_next.models.representation import describe
 from shell_next.models.results import BackendStatus, CommandResult, CommandSnapshot, OutputEvent
 from shell_next.models.state import Outcome, StdinMode
 
@@ -75,6 +76,20 @@ class CommandHandle:
             )
             for name in ("stdout", "stderr")
         }
+
+    def __repr__(self) -> str:
+        """Summarize live command state without waiting or exposing command/input payloads.
+
+        :returns: Command identity, state, received byte counts, and completion flag.
+        """
+        return describe(
+            self,
+            command_id=self.command_id,
+            state=self.state,
+            stdout_bytes=self.captures["stdout"].received,
+            stderr_bytes=self.captures["stderr"].received,
+            done=self.result is not None,
+        )
 
     async def wait(self, wait_timeout: float | None = None) -> CommandResult:
         """Observe completion; cancelling this wait does not stop the command.

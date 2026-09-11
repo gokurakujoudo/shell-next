@@ -29,7 +29,10 @@ async def test_persistent_state_and_structural_inheritance(backend: str, directo
             "$env:SHELL_NEXT_NATIVE='kept'",
             "cmd": "set local_value=42\nset SHELL_NEXT_NATIVE=kept",
         }[backend]
-        assert (await shell.run(SessionScript(native), timeout=10)).success
+        script = SessionScript(native)
+        script_result = await shell.run(script, timeout=10)
+        assert script_result.success
+        assert script_result.command is script
         read = "echo %local_value%" if backend == "cmd" else "saved_function"
         assert (await shell.run(SessionScript(read), timeout=10)).stdout.tail.strip() == b"42"
         result = await shell.run(

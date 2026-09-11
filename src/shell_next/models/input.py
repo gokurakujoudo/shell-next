@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from shell_next.errors import ConfigurationError
+from shell_next.models.representation import RecordRepr
 
 type StreamName = Literal["stdout", "stderr", "terminal"]
 """Transport labels, shared across backends; terminal is reserved for capable transports."""
@@ -11,8 +12,8 @@ type MatchStream = Literal["stdout", "stderr", "either"]
 """Literal match destinations; either searches each stream independently."""
 
 
-@dataclass(frozen=True)
-class Send:
+@dataclass(frozen=True, repr=False)
+class Send(RecordRepr):
     """Submit bytes once without implying that a target consumed them.
 
     :param data: Bytes to submit; omitted from representations to protect secrets.
@@ -23,7 +24,7 @@ class Send:
     secret: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class SendLine(Send):
     """Submit bytes followed by LF, including on Windows binary transports.
 
@@ -32,8 +33,8 @@ class SendLine(Send):
     """
 
 
-@dataclass(frozen=True)
-class Expect:
+@dataclass(frozen=True, repr=False)
+class Expect(RecordRepr):
     """Wait for a literal byte pattern in a bounded stream window.
 
     :param pattern: Nonempty bytes, potentially spanning read chunks.
@@ -56,13 +57,13 @@ class Expect:
             raise ConfigurationError("Expect timeout must be nonnegative")
 
 
-@dataclass(frozen=True)
-class CloseStdin:
+@dataclass(frozen=True, repr=False)
+class CloseStdin(RecordRepr):
     """Close business stdin explicitly after preceding plan operations."""
 
 
-@dataclass(frozen=True)
-class InputPlan:
+@dataclass(frozen=True, repr=False)
+class InputPlan(RecordRepr):
     """Sequential single-writer input automation.
 
     :param steps: Ordered instructions, copied to an immutable tuple.
@@ -75,8 +76,8 @@ class InputPlan:
         object.__setattr__(self, "steps", tuple(self.steps))
 
 
-@dataclass(frozen=True)
-class InputSummary:
+@dataclass(frozen=True, repr=False)
+class InputSummary(RecordRepr):
     """Payload-free input accounting, measured in bytes.
 
     :param accepted: Bytes accepted by the package writer.

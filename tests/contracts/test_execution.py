@@ -32,6 +32,9 @@ async def test_repeated_raw_structural_commands(backend: str, directory: Path) -
     async with use_shell_session(config_for(backend, directory, expectation, expectation)) as shell:
         for _ in range(2):
             result = await shell.run(command, check=True, timeout=10)
+            assert result.command is command
+            assert result.stdout_str() == output.decode("utf-8")
+            assert result.stderr_str() == "error"
             assert result.stdout.tail == output
             assert result.stderr.tail == b"error"
             assert result.stdout.complete and result.session_reusable
@@ -128,20 +131,25 @@ async def test_checked_result_is_finalized(backend: str, directory: Path) -> Non
         assert failure.value.result.stdout.tail.strip() == b"before"
         assert failure.value.result.status.code == 7
         assert failure.value.result.stdout.sealed
+        assert failure.value.result.command is command
         assert shell.is_usable
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
-async def test_bounded_capture_without_subscribers(backend: str, directory: Path) -> None:
+@pytest.mark.parametrize("tail_bytes", [None, 0, 1024, 200000, 200001])
+async def test_bounded_capture_without_subscribers(
+    backend: str, directory: Path, tail_bytes: int | None
+) -> None:
     command = python_command("import os; os.write(1,b'a'*200000); os.write(2,b'b'*200000)")
     expected = MockExpectation(command, (Emit(b"a" * 200000), Emit(b"b" * 200000, "stderr")))
     config = config_for(backend, directory, expected)
-    config.capture = CaptureConfig(tail_bytes=1024)
+    config.capture = CaptureConfig() if tail_bytes is None else CaptureConfig(tail_bytes=tail_bytes)
+    limit = 65536 if tail_bytes is None else tail_bytes
     async with use_shell_session(config) as shell:
         result = await shell.run(command, timeout=10)
         assert result.success
-        for stream in (result.stdout, result.stderr):
+        for stream, value in ((result.stdout, b"a"), (result.stderr, b"b")):
             assert stream.received == 200000
-            assert len(stream.tail) == 1024
-            assert not stream.complete
-            assert stream.end == "truncated"
+            assert stream.tail == value * min(limit, 200000)
+            assert stream.complete == (limit >= 200000)
+            assert stream.end == ("eof" if limit >= 200000 else "truncated")

@@ -3,7 +3,7 @@
 <div class="hero">
   <img src="assets/shell-next-logo.png" alt="shell-next logo" width="220" height="220">
   <div>
-    <p class="version">shell-next 0.1.1 · Python 3.14+</p>
+    <p class="version">shell-next 0.1.2 · Python 3.14+</p>
     <p>Persistent asynchronous Bash, PowerShell, and cmd sessions. Own commands through completion, interact with prompts, and test the same application code with a deterministic mock.</p>
     <a class="button" href="getting-started/">Get started</a>
     <a class="button secondary" href="https://github.com/gokurakujoudo/shell-next">View on GitHub</a>
@@ -29,7 +29,11 @@ environment variables, and native shell state persist between normal commands.
 ## Built for observable execution
 
 - **Bounded capture.** Separate stdout/stderr tails, optional durable files, and
-  independent subscribers that cannot block primary capture.
+  independent subscribers that cannot block primary capture. Configure tail
+  limits with `CaptureConfig(tail_bytes=...)`; the default is 64 KiB per stream.
+- **Convenient results.** Retain original commands and decode stdout/stderr
+  tails with `stdout_str()` and `stderr_str()`. Read bounded representations of
+  records and live session/command state for diagnostics.
 - **Explicit ownership.** Cancelling an observation leaves execution running;
   cancelling a command owner initiates cleanup.
 - **Deterministic tests.** Inject `MockShellSession` through the normal session

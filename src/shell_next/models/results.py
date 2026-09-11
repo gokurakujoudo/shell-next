@@ -2,13 +2,15 @@
 
 from dataclasses import dataclass, field
 
+from shell_next.models.commands import Command
 from shell_next.models.input import InputSummary, StreamName
 from shell_next.models.privilege import PrivilegeReport
+from shell_next.models.representation import RecordRepr
 from shell_next.models.state import Backend, Outcome, SessionState
 
 
-@dataclass(frozen=True)
-class BackendStatus:
+@dataclass(frozen=True, repr=False)
+class BackendStatus(RecordRepr):
     """Native status details, deliberately separate from the normalized outcome.
 
     :param code: Process exit code, Bash status, or cmd ERRORLEVEL.
@@ -23,8 +25,8 @@ class BackendStatus:
     terminating_error: bool = False
 
 
-@dataclass(frozen=True)
-class OutputResult:
+@dataclass(frozen=True, repr=False)
+class OutputResult(RecordRepr):
     """Sealed stream accounting with byte counts and explicit completeness.
 
     :param received: Bytes received from the transport.
@@ -47,8 +49,8 @@ class OutputResult:
     unread_possible: bool = False
 
 
-@dataclass(frozen=True)
-class OutputEvent:
+@dataclass(frozen=True, repr=False)
+class OutputEvent(RecordRepr):
     """A raw stream chunk with stable sequence and byte offset.
 
     :param command_id: Owning command identifier.
@@ -71,8 +73,8 @@ class OutputEvent:
     logical_stream: str | None = None
 
 
-@dataclass(frozen=True)
-class CleanupReport:
+@dataclass(frozen=True, repr=False)
+class CleanupReport(RecordRepr):
     """Termination and cleanup evidence, without inferring unverified guarantees.
 
     :param soft_stop: A soft termination was requested.
@@ -87,8 +89,8 @@ class CleanupReport:
     errors: tuple[str, ...] = ()
 
 
-@dataclass(frozen=True)
-class CommandResult:
+@dataclass(frozen=True, repr=False)
+class CommandResult(RecordRepr):
     """One final command result, including execution and capture independently.
 
     :param session_id: Owning session identifier.
@@ -108,6 +110,8 @@ class CommandResult:
     :param secondary_errors: Additional failures that did not replace the primary outcome.
     :param tags: Immutable user key/value pairs.
     :param session_reusable: Session protocol was healthy when finalization ended.
+    :param command: Original submitted command, excluded from repr. None is allowed
+        for manually constructed legacy results; session results always retain it.
     """
 
     session_id: str
@@ -127,10 +131,33 @@ class CommandResult:
     secondary_errors: tuple[str, ...] = ()
     tags: tuple[tuple[str, str], ...] = ()
     session_reusable: bool = True
+    command: Command | None = field(default=None, repr=False)
+
+    def stdout_str(self, encoding: str = "utf-8", errors: str = "replace") -> str:
+        """Decode the retained stdout tail without reading a capture file.
+
+        :param encoding: Python text codec name; defaults to UTF-8.
+        :param errors: Decode error handler; replacement tolerates truncated characters.
+        :returns: Tail text, possibly incomplete when byte capture was truncated.
+        :raises UnicodeError: Decoding fails with the selected error handler.
+        :raises LookupError: The codec or required error handler is unknown.
+        """
+        return self.stdout.tail.decode(encoding, errors)
+
+    def stderr_str(self, encoding: str = "utf-8", errors: str = "replace") -> str:
+        """Decode the retained stderr tail without reading a capture file.
+
+        :param encoding: Python text codec name; defaults to UTF-8.
+        :param errors: Decode error handler; replacement tolerates truncated characters.
+        :returns: Tail text, possibly incomplete when byte capture was truncated.
+        :raises UnicodeError: Decoding fails with the selected error handler.
+        :raises LookupError: The codec or required error handler is unknown.
+        """
+        return self.stderr.tail.decode(encoding, errors)
 
 
-@dataclass(frozen=True)
-class SessionSnapshot:
+@dataclass(frozen=True, repr=False)
+class SessionSnapshot(RecordRepr):
     """In-memory session view, requiring no implicit shell command.
 
     :param session_id: Session identifier.
@@ -138,7 +165,7 @@ class SessionSnapshot:
     :param active_command: Active or first queued command identifier, if any.
     :param queued: Number of submitted commands not yet executing.
     :param cwd: Last explicitly observed directory, possibly stale after scripts.
-    :param environment: Last explicitly observed environment, possibly stale after scripts.
+    :param environment: Last observed environment, possibly stale; omitted from repr.
     """
 
     session_id: str
@@ -146,11 +173,11 @@ class SessionSnapshot:
     active_command: str | None
     queued: int
     cwd: str | None
-    environment: tuple[tuple[str, str], ...]
+    environment: tuple[tuple[str, str], ...] = field(repr=False)
 
 
-@dataclass(frozen=True)
-class CommandSnapshot:
+@dataclass(frozen=True, repr=False)
+class CommandSnapshot(RecordRepr):
     """In-memory view of one queued, active, or finalized command.
 
     :param command_id: Command identifier.

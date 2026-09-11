@@ -38,6 +38,8 @@ async def test_queued_stop_and_acquire_timeout_do_not_stop_active(
         queued = shell.submit(command)
         result = await queued.stop()
         assert result.started is None and result.outcome == Outcome.STOPPED
+        assert result.command is command
+        assert result.stdout_str() == result.stderr_str() == ""
         deadline = shell.submit(command, options=CommandOptions(timeouts=TimeoutPolicy(acquire=0)))
         assert (await deadline.wait()).outcome == Outcome.TIMEOUT
         assert not active.future.done() and shell.is_usable

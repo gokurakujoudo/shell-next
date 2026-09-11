@@ -10,13 +10,14 @@ from shell_next.errors import (
     PrivilegeUnsupportedError,
 )
 from shell_next.models.capabilities import SessionCapabilities
+from shell_next.models.representation import RecordRepr
 
 type PasswordProvider = Callable[[], Awaitable[bytes]]
 """Asynchronous secret supplier, invoked only after sudo requests authentication."""
 
 
-@dataclass(frozen=True)
-class PrivilegeRequest:
+@dataclass(frozen=True, repr=False)
+class PrivilegeRequest(RecordRepr):
     """A capability-checked request, never an implicit Windows UAC action.
 
     :param requirement: Inherited identity or active elevation.
@@ -49,8 +50,8 @@ class PrivilegeRequest:
             raise ConfigurationError("Invalid target identity")
 
 
-@dataclass(frozen=True)
-class PrivilegeReport:
+@dataclass(frozen=True, repr=False)
+class PrivilegeReport(RecordRepr):
     """Secret-free privilege outcome.
 
     :param requested: Active elevation was requested.

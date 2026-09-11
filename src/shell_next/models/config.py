@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from shell_next.errors import ConfigurationError
 from shell_next.models.input import InputPlan
 from shell_next.models.privilege import PrivilegeRequest
+from shell_next.models.representation import RecordRepr
 from shell_next.models.state import Backend, ConcurrencyPolicy, StdinMode
 
 if TYPE_CHECKING:
@@ -26,8 +27,8 @@ def validate_seconds(value: float | None, name: str) -> None:
         raise ConfigurationError(f"{name} must be finite and nonnegative")
 
 
-@dataclass(frozen=True)
-class TimeoutPolicy:
+@dataclass(frozen=True, repr=False)
+class TimeoutPolicy(RecordRepr):
     """Independent execution and cleanup budgets, all measured in seconds.
 
     Defaults are package policy, not operating-system guarantees: cleanup gets
@@ -59,8 +60,8 @@ class TimeoutPolicy:
             validate_seconds(getattr(self, name), name)
 
 
-@dataclass(frozen=True)
-class CaptureConfig:
+@dataclass(frozen=True, repr=False)
+class CaptureConfig(RecordRepr):
     """Bounded capture limits; file destinations are opt-in and never overwritten.
 
     Defaults are package-selected byte and event counts: 64 KiB tails and match
@@ -90,8 +91,8 @@ class CaptureConfig:
             raise ConfigurationError("Discard mode cannot persist files")
 
 
-@dataclass(frozen=True)
-class CommandOptions:
+@dataclass(frozen=True, repr=False)
+class CommandOptions(RecordRepr):
     """Per-command lifecycle configuration, measured by the nested policies.
 
     :param timeouts: Execution, acquisition, and cleanup budgets.
@@ -119,8 +120,8 @@ class CommandOptions:
             raise ConfigurationError("Plan mode requires exactly one input plan")
 
 
-@dataclass
-class SessionConfig:
+@dataclass(repr=False)
+class SessionConfig(RecordRepr):
     """Session setup and the official downstream dependency injection point.
 
     :param backend: Native shell language.

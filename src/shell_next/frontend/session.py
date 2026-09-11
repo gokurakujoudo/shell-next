@@ -23,6 +23,7 @@ from shell_next.models.capabilities import backend_capabilities
 from shell_next.models.commands import Command, ProcessCommand, SessionScript
 from shell_next.models.config import CommandOptions, SessionConfig
 from shell_next.models.privilege import validate_privilege
+from shell_next.models.representation import describe
 from shell_next.models.results import CleanupReport, CommandResult, SessionSnapshot
 from shell_next.models.state import ConcurrencyPolicy, SessionState
 
@@ -51,6 +52,19 @@ class ShellSession:
         self.cwd = config.cwd
         self.environment = dict(config.env)
         self.close_task: asyncio.Task[CleanupReport] | None = None
+
+    def __repr__(self) -> str:
+        """Summarize lifecycle state without querying the shell or exposing its environment.
+
+        :returns: Session identity, backend, state, and number of pending commands.
+        """
+        return describe(
+            self,
+            session_id=self.session_id,
+            backend=self.config.backend,
+            state=self.state,
+            pending=len(self.pending),
+        )
 
     def clock(self) -> float:
         """Read the native monotonic clock.

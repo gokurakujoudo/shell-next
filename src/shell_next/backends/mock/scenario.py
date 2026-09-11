@@ -7,11 +7,12 @@ from shell_next.errors import MockExpectationNotConsumedError, MockUnexpectedCom
 from shell_next.models.commands import Command
 from shell_next.models.config import validate_seconds
 from shell_next.models.input import StreamName
+from shell_next.models.representation import RecordRepr
 from shell_next.models.results import BackendStatus
 
 
-@dataclass(frozen=True)
-class Emit:
+@dataclass(frozen=True, repr=False)
+class Emit(RecordRepr):
     """Emit one raw mock output chunk.
 
     :param data: Raw bytes delivered to capture and prompt matching.
@@ -22,8 +23,8 @@ class Emit:
     stream: StreamName = "stdout"
 
 
-@dataclass(frozen=True)
-class Receive:
+@dataclass(frozen=True, repr=False)
+class Receive(RecordRepr):
     """Require one input submission or explicit EOF.
 
     :param data: Expected bytes, or None for stdin closure; always hidden in repr.
@@ -32,8 +33,8 @@ class Receive:
     data: bytes | None = field(repr=False)
 
 
-@dataclass(frozen=True)
-class Advance:
+@dataclass(frozen=True, repr=False)
+class Advance(RecordRepr):
     """Advance virtual command time without sleeping.
 
     :param seconds: Nonnegative virtual duration in seconds.
@@ -49,8 +50,8 @@ class Advance:
         validate_seconds(self.seconds, "virtual seconds")
 
 
-@dataclass(frozen=True)
-class Failure:
+@dataclass(frozen=True, repr=False)
+class Failure(RecordRepr):
     """Inject a transport or protocol failure deterministically.
 
     :param kind: Input, output, startup, or session failure category.
@@ -59,15 +60,15 @@ class Failure:
     kind: Literal["input", "output", "startup", "session"]
 
 
-@dataclass(frozen=True)
-class MockExpectation:
+@dataclass(frozen=True, repr=False)
+class MockExpectation(RecordRepr):
     """One expected command with ordered interaction and simulated native status.
 
     :param command: Exact expected structural process or script.
     :param steps: Ordered output, input, time, and failure steps.
     :param status: Native result after all interaction steps.
     :param cwd: Optional simulated persistent directory change.
-    :param env: Simulated exported environment updates; None removes a variable.
+    :param env: Simulated environment updates, hidden in repr; None removes a variable.
     :param authentication_prompts: Simulated private password requests; zero models a cache hit.
     :param authenticated: Whether simulated privilege authentication succeeds.
     """
@@ -76,13 +77,13 @@ class MockExpectation:
     steps: tuple[Emit | Receive | Advance | Failure, ...] = ()
     status: BackendStatus = field(default_factory=lambda: BackendStatus(0))
     cwd: str | None = None
-    env: tuple[tuple[str, str | None], ...] = ()
+    env: tuple[tuple[str, str | None], ...] = field(default=(), repr=False)
     authentication_prompts: int = 0
     authenticated: bool = True
 
 
-@dataclass
-class MockScenario:
+@dataclass(repr=False)
+class MockScenario(RecordRepr):
     """FIFO expectations, strict by default, with deterministic observable history.
 
     :param expectations: Ordered expected commands.
