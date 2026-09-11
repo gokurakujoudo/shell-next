@@ -146,6 +146,36 @@ storage failure, and forced cleanup. Explicit discard still counts received byte
 sequence, timestamp, and per-stream byte offset. They do not establish a global
 ordering between independently produced stdout and stderr bytes.
 
+## Diagnostic representations
+
+`repr()` on public commands, configuration, input steps, results, snapshots,
+capabilities, and mock scenarios shows the class name and named fields. Enum
+values appear as names such as `Outcome.EXITED`. Long strings, byte payloads,
+collections, and nested records are abbreviated with `...`; large byte previews
+include the full byte count. Stored values and capture limits are unchanged.
+
+Sessions show their identifier, backend, lifecycle state, and pending count.
+Command handles show their identifier, state, stdout/stderr byte counts, and
+whether the result is finalized. Repr reads in-memory state without executing
+commands, waiting, reading files, or calling password providers.
+
+Input payloads, password providers, configuration and snapshot environments,
+mock environment updates, and the original command inside a result remain hidden.
+Commands and output previews may still contain caller-supplied sensitive text;
+repr is a diagnostic display, not a serialization or general-purpose redactor.
+
+<!-- python-doc-exec -->
+```python
+from shell_next import OutputResult, ProcessCommand
+
+command = ProcessCommand("git", ("status", "--short"))
+assert repr(command) == "ProcessCommand(executable='git', args=('status', '--short'))"
+output = OutputResult(received=1000, tail=b"x" * 1000, complete=False)
+assert "(1000 bytes)" in repr(output)
+assert "complete=False" in repr(output)
+assert len(output.tail) == 1000
+```
+
 ## Sudo
 
 ```python

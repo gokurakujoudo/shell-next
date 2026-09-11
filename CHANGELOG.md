@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.2
+
+Released 2026-09-11.
 
 - Retain the original submitted command in finalized results, including failures
   and commands stopped before execution.
@@ -8,6 +10,8 @@
   with configurable encoding and error handling (UTF-8 with replacement by default).
 - Document and verify configurable stdout/stderr tail bounds through
   `CaptureConfig.tail_bytes`, including the existing 64 KiB per-stream default.
+- Add readable, bounded representations across public records, mock scenarios,
+  sessions, and command handles, preserving secret-field exclusions.
 
 ## 0.1.1
 

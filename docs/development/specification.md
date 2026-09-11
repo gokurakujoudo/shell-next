@@ -488,7 +488,25 @@ The public contract must remain centered on `use_shell_session(config)`, `run()`
 
 Backend-specific mechanisms remain implementation details, while backend-specific limitations remain explicit through capabilities and typed errors rather than hidden behavioral differences.
 
-## 25. Quality
+## 25. Diagnostic representations
+
+Public dataclass records expose named fields with bounded strings, bytes,
+collections, and nesting. Enum fields use symbolic names. Large byte previews
+include their full size. Formatting never mutates values or capture bounds.
+Nested and recursive records must terminate with explicit ellipses.
+
+Respect every `repr=False` field, including authentication providers, input
+payloads, and original commands retained by results. Omit configuration/snapshot
+environment values and mock environment updates. Ordinary commands, arguments,
+and output previews are still visible; repr is not a general secret scrubber or
+a serialization contract.
+
+Live sessions and command handles show identifiers, lifecycle state, and relevant
+counts rather than object memory addresses. Their reprs read stored state only,
+without shell queries, scheduling, file access, or provider calls. Formatting is
+diagnostic and does not establish new thread-safety or snapshot guarantees.
+
+## 26. Quality
 
 - Production class and function names must describe their purpose without an
   underscore prefix. Only Python protocol methods may use required dunder

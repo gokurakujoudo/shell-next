@@ -84,6 +84,10 @@ Use `result.stdout_str()` and `result.stderr_str()` for decoded tail text (UTF-8
 with replacement by default), or access raw bytes through `result.stdout.tail`
 and `result.stderr.tail`.
 
+Public records have named-field reprs with readable enum names and abbreviated
+large payloads. Sessions and command handles show current lifecycle state and
+counts. Representations preserve hidden secret fields and do not query the shell.
+
 Set `SessionConfig(capture=CaptureConfig(tail_bytes=4096))` to retain at most
 4 KiB per stream; the default is 65,536 bytes (64 KiB), and zero retains no tail.
 Each stream retains its own bounded tail, and
