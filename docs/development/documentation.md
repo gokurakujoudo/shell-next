@@ -4,6 +4,8 @@ The site is built from `docs/` with MkDocs. `mkdocs.yml` owns navigation and
 theme configuration; `docs/assets/stylesheets/brand.css` owns the presentation.
 The supplied `shell-next-logo.png` remains the canonical logo. Its byte-identical
 copy in `docs/assets/` makes site builds independent of remote image hosts.
+The site displays the logo only at the top of the home page content; the sidebar
+uses the site name without a logo.
 
 ## Build and preview
 
@@ -18,6 +20,24 @@ The local preview is served at `http://127.0.0.1:8000`. Generated output lives i
 `site/` and is ignored by Git. Strict builds fail on broken Markdown links or
 navigation warnings; the validator also checks generated HTML links, fragments,
 assets, and logo integrity.
+
+## Tutorial examples
+
+`docs/tutorials/index.md` owns the ordered chapter list. Each chapter publishes
+the complete matching `examples/NN-topic.py` source. Update both together;
+documentation tests reject differences and missing or unlisted chapters/files.
+
+Tutorial blocks use `<!-- python-doc-exec native: NN-topic.py -->`, `mock`, or
+`sudo` markers. Documentation tests execute mock blocks and inject deterministic
+sudo scenarios into the exact published code. Integration tests in
+`tests/contracts/test_tutorial_examples.py` execute native blocks on each supported
+host/backend and report genuine platform skips. This does not make legacy,
+unmarked examples executable. To check tutorial native execution separately, run
+`python -m pytest tests/contracts/test_tutorial_examples.py`.
+
+Run Ruff and `python -m mypy examples` after editing standalone examples in
+addition to the normal project checks. Tutorial examples are application code,
+not part of the production source branch-coverage target.
 
 ## GitHub Pages
 

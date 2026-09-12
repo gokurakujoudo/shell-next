@@ -7,13 +7,25 @@ edit_uri: edit/main/docs/
 strict: true
 theme:
   name: readthedocs
-  logo: assets/shell-next-logo.png
   highlightjs: true
   navigation_depth: 3
   prev_next_buttons_location: bottom
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Tutorials:
+      - Overview: tutorials/index.md
+      - Ordinary and multiple commands: tutorials/01-commands.md
+      - Directory navigation: tutorials/02-navigation.md
+      - Environment variables: tutorials/03-environment.md
+      - Native scripts and script files: tutorials/04-scripts.md
+      - Output decoding and full capture: tutorials/05-capture.md
+      - Interactive input and live events: tutorials/06-input-and-events.md
+      - Failures and lifecycle: tutorials/07-errors-and-lifecycle.md
+      - Queued and concurrent work: tutorials/08-concurrency.md
+      - Sudo and capabilities: tutorials/09-sudo.md
+      - Deterministic application tests: tutorials/10-mocking.md
+      - Complete workflow: tutorials/11-workflow.md
   - Usage guide: usage.md
   - Backend support: backends.md
   - Testing applications: testing.md

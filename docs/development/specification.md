@@ -84,6 +84,10 @@ A Bash `SessionScript` executes in the current Bash state space, a PowerShell `S
 
 A `SessionScript` may modify persistent session state. Such modifications are not rolled back when the script later fails.
 
+On cmd, command completion is reported only after the private batch wrapper
+returns to its caller. Cleanup must not remove a batch file that cmd may still
+read. Consecutive successful commands must preserve session usability.
+
 The package does not convert Bash syntax to PowerShell syntax, PowerShell syntax to cmd syntax, or any other Shell language automatically.
 
 Portable application logic should therefore prefer `ProcessCommand`, `shell.chdir()`, `shell.set_env()`, and `shell.unset_env()` whenever Shell-specific syntax is unnecessary.
@@ -289,6 +293,30 @@ A privilege request states whether elevated execution is required, which target 
 The package must expose privilege capability through `shell.capabilities` before execution.
 
 ### Bash supports interactive and noninteractive sudo in the first release.
+
+`SessionConfig(sudo_password=...)` accepts an upfront password as UTF-8 text or
+raw bytes for use by the session. `None` means no configured password; empty
+text/bytes represent an empty password. Other types, unencodable text, and
+passwords containing CR, LF, or NUL raise `ConfigurationError` without including
+the secret. Text is normalized to UTF-8 bytes during configuration.
+
+An explicitly elevated command with no password provider uses the configured
+password through the existing private interactive authentication transport.
+This enables password authentication even when the request's `interactive`
+field has its default false value. An explicit provider takes precedence.
+Without a session password, existing noninteractive/provider behavior is unchanged.
+Setting the password never elevates an inherited-identity command or authenticates
+at session startup. Windows active elevation and strict privileged cleanup remain
+unsupported. Commands can inherit an elevated request from `SessionConfig.defaults`.
+
+The password is reused for later authentication requests, subject to each
+request's attempt limit; sudo cache hits send no password. No host prompt or
+fallback provider is added. Passwords are excluded from configuration repr,
+equality, `to_dict()`, child environment, command results, and call history.
+The caller-owned configuration retains its password in memory; closing a session
+does not erase it or promise secure memory zeroization. Each submission captures
+its password value; a later change to `shell.config.sudo_password` affects future
+submissions only. The mock copies the caller's configuration when it is created.
 
 The Bash backend on RHEL 8 must support noninteractive sudo and interactive password-based sudo as first-release features.
 

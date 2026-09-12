@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.3
+
+Released 2026-09-13.
+
+- Fix intermittent cmd session loss by reporting completion after the private
+  batch wrapper returns, before removing its files.
+
+- Accept an upfront text or bytes sudo password in `SessionConfig`, reusing it
+  for explicitly elevated Bash commands through the private authentication
+  channel. Preserve per-command provider precedence and secret-free diagnostics.
+
+- Add an ordered tutorial with complete runnable examples for commands, navigation,
+  environment, native scripts, capture, input, lifecycle, concurrency, sudo,
+  deterministic mocks, and a composed workflow across Bash, PowerShell, and cmd.
+- Verify tutorial discovery, example-file parity, and exact published source
+  execution with native platform and deterministic mock checks.
+- Update the project logo and show it only in the home page content on the
+  documentation site, removing the sidebar logo.
+
 ## 0.1.2
 
 Released 2026-09-11.

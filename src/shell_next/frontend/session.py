@@ -22,7 +22,7 @@ from shell_next.frontend.operations import state_operation
 from shell_next.models.capabilities import backend_capabilities
 from shell_next.models.commands import Command, ProcessCommand, SessionScript
 from shell_next.models.config import CommandOptions, SessionConfig
-from shell_next.models.privilege import validate_privilege
+from shell_next.models.privilege import resolve_privilege, validate_privilege
 from shell_next.models.representation import describe
 from shell_next.models.results import CleanupReport, CommandResult, SessionSnapshot
 from shell_next.models.state import ConcurrencyPolicy, SessionState
@@ -150,6 +150,9 @@ class ShellSession:
         if timeout is not None:
             resolved = replace(resolved, timeouts=replace(resolved.timeouts, execution=timeout))
         validate_privilege(resolved.privilege, self.capabilities)
+        resolved = replace(
+            resolved, privilege=resolve_privilege(resolved.privilege, self.config.sudo_password)
+        )
         handle = CommandHandle(self, self.next_command_id(), command, resolved)
         handle.reservation = self.driver.reserve(command)
         self.pending[handle.command_id] = handle

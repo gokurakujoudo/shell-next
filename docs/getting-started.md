@@ -62,5 +62,6 @@ result = await shell.run(SessionScript('printf "%s" "$answer"'), check=True)
 assert result.stdout.tail == b"42"
 ```
 
-Continue with the [usage guide](usage.md) for interactive input and capture, or
+Continue with the [step-by-step tutorial](tutorials/index.md) for complete examples
+across all three backends, the [usage guide](usage.md) for input and capture, or
 [application testing](testing.md) to replace native execution with a mock.

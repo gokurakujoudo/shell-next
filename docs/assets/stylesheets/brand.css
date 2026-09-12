@@ -9,16 +9,6 @@
   background: var(--shell-ink);
 }
 
-.wy-side-nav-search > a img.logo {
-  width: 200px;
-  height: 130px;
-  max-width: 100%;
-  object-fit: cover;
-  border-radius: 12px;
-  margin: 4px auto 12px;
-  padding: 0;
-}
-
 .wy-side-nav-search input[type="text"] {
   border-color: var(--shell-accent);
 }
@@ -52,6 +42,7 @@
 
 .hero img {
   width: 220px;
+  height: auto;
   border-radius: 18px;
 }
 

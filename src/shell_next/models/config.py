@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from shell_next.errors import ConfigurationError
 from shell_next.models.input import InputPlan
-from shell_next.models.privilege import PrivilegeRequest
+from shell_next.models.privilege import PrivilegeRequest, encode_password
 from shell_next.models.representation import RecordRepr
 from shell_next.models.state import Backend, ConcurrencyPolicy, StdinMode
 
@@ -134,6 +134,9 @@ class SessionConfig(RecordRepr):
     :param shutdown_timeout: Shutdown budget in seconds, defaulting to ten.
     :param executable: Optional shell executable path.
     :param _session_cls: Test implementation; excluded from repr, equality and serialization.
+    :param sudo_password: Optional upfront sudo secret, normalized to UTF-8 bytes.
+        Used only for elevated requests without a provider. Excluded from repr,
+        equality, and to_dict; retained in this caller-owned configuration.
     """
 
     backend: Backend = Backend.BASH
@@ -146,14 +149,16 @@ class SessionConfig(RecordRepr):
     shutdown_timeout: float = 10.0
     executable: str | None = None
     _session_cls: type[ShellSession] | None = field(default=None, repr=False, compare=False)
+    sudo_password: str | bytes | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Validate setup without starting processes or consulting ambient state.
 
-        :raises ConfigurationError: A duration or environment entry is invalid.
+        :raises ConfigurationError: A duration, environment entry, or password is invalid.
         """
         self.backend = Backend(self.backend)
         self.concurrency = ConcurrencyPolicy(self.concurrency)
+        self.sudo_password = encode_password(self.sudo_password)
         validate_seconds(self.startup_timeout, "startup_timeout")
         validate_seconds(self.shutdown_timeout, "shutdown_timeout")
         if any(not k or "=" in k or "\0" in k + v for k, v in self.env.items()):

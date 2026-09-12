@@ -178,6 +178,72 @@ assert len(output.tail) == 1000
 
 ## Sudo
 
+Supply a password before creating the session with
+`SessionConfig(sudo_password=known_password)`. Text is encoded as UTF-8; bytes
+are used directly. An explicitly elevated request without its own provider uses
+this secret through the existing private authentication channel. Ordinary
+commands remain unelevated. A per-command provider takes precedence; without a
+configured password, noninteractive requests keep their existing behavior.
+
+The following deterministic example demonstrates repeated elevation, including
+a cache hit, without requiring sudo or any real password:
+
+<!-- python-doc-exec -->
+```python
+import asyncio
+
+from shell_next import (
+    CommandOptions,
+    Emit,
+    MockExpectation,
+    MockScenario,
+    MockShellSession,
+    PrivilegeRequest,
+    ProcessCommand,
+    SessionConfig,
+    use_shell_session,
+)
+
+
+async def main():
+    command = ProcessCommand("id", ("-u",))
+    scenario = MockScenario(
+        [
+            MockExpectation(command, (Emit(b"0\n"),), authentication_prompts=prompts)
+            for prompts in (1, 0, 1)
+        ]
+    )
+    config = SessionConfig(sudo_password="demonstration-only")
+    config._session_cls = MockShellSession.configured(scenario)
+    options = CommandOptions(privilege=PrivilegeRequest(requirement="elevated"))
+    async with use_shell_session(config) as shell:
+        for prompts in (1, 0, 1):
+            result = await shell.run(command, options=options, check=True)
+            assert result.stdout_str() == "0\n"
+            assert result.privilege.attempts == prompts
+    assert "sudo_password" not in config.to_dict()
+    assert "demonstration-only" not in repr(config)
+    assert "demonstration-only" not in repr(scenario.calls)
+
+
+asyncio.run(main())
+```
+
+Put an elevated `CommandOptions` in `SessionConfig.defaults` if all commands
+should elevate by default; an explicit inherited request opts individual commands
+out. The password alone does not change defaults. See the
+[complete sudo example](tutorials/09-sudo.md) for native execution, upfront input,
+on-demand providers, and elevated script state.
+
+`None` disables the session password; empty text/bytes represent an empty
+password. Invalid types, unencodable text, CR, LF, and NUL are rejected without
+including the secret in the diagnostic. The caller's configuration retains
+the secret in memory; closing the session does not erase caller-owned data.
+Each submitted command captures the current value, so changing
+`shell.config.sudo_password` affects later submissions only. Do not serialize
+secrets with generic dataclass utilities; `to_dict()` is the supported projection
+that omits this field. Windows active elevation remains unsupported.
+
 ```python
 from shell_next import CommandOptions, PrivilegeRequest
 

@@ -25,6 +25,8 @@ shell scope. Bash descriptor 9 and the `sn_` namespace are reserved for the
 control protocol.
 
 Interactive sudo authentication uses private channels and a unique prompt.
+`SessionConfig.sudo_password` supplies an upfront text/bytes secret for elevated
+commands without an explicit provider; ordinary commands retain their identity.
 Passwords are separate from business stdin and capture. Cached credentials do
 not cause unnecessary provider calls. Elevated scripts run in a separate
 elevated Bash process, so their state does not persist in the ordinary session.
