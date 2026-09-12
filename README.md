@@ -12,6 +12,13 @@
 
 Persistent asynchronous Bash, PowerShell, and cmd sessions for Python 3.14+.
 
+Bash sudo supports an upfront `SessionConfig(sudo_password=...)` reused by
+explicitly elevated commands, or an asynchronous per-command password provider.
+
+Follow the [step-by-step tutorial](docs/tutorials/index.md) for examples from basic
+commands through a complete workflow on all three backends. Full standalone code
+is in [examples/](examples/README.md).
+
 [Documentation](https://gokurakujoudo.github.io/shell-next/) ·
 [PyPI](https://pypi.org/project/shell-next/) · [Wiki drafts](wiki/README.md)
 

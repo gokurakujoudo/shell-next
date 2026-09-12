@@ -41,6 +41,11 @@ POSIX uses private FIFOs and a new process group. Native shells are trusted:
 programs that deliberately escape a process group are outside that containment
 guarantee. Active Windows elevation is rejected.
 
+The shared submission frontend resolves `SessionConfig.sudo_password` into a
+captured asynchronous provider only for an elevated request without its own
+provider. Both native and mock drivers use their existing authentication paths.
+The configured secret stays out of child environment and configuration serialization.
+
 Capture retains bounded tails and rolling match windows. Each file destination
 has a dedicated single-worker executor; transport backpressure limits outstanding
 writes. Subscriber queues are bounded and cannot backpressure primary capture.

@@ -19,7 +19,7 @@ def wrapper(text: str, token: str, script: bool, channels: dict[str, str]) -> st
     """Call a batch file in persistent state and preserve its ERRORLEVEL.
 
     :param text: Private batch or bridge invocation.
-    :param token: Random command status marker.
+    :param token: Reserved status marker; the caller reports it after this wrapper returns.
     :param script: Whether native stream redirection is required.
     :param channels: Command-specific named pipe endpoints.
     :returns: Native batch wrapper.
@@ -29,4 +29,4 @@ def wrapper(text: str, token: str, script: bool, channels: dict[str, str]) -> st
             f"{fd}{direction}{quote(channels[name])}"
             for fd, direction, name in ((0, "<", "stdin"), (1, ">", "stdout"), (2, ">", "stderr"))
         )
-    return f"@echo off\n{text}\necho {token}:%errorlevel%\n"
+    return f"@echo off\n{text}\n"

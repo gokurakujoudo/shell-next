@@ -1,7 +1,7 @@
 """Backend-neutral privilege requests and payload-free reports."""
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from shell_next.errors import (
@@ -64,6 +64,52 @@ class PrivilegeReport(RecordRepr):
     authenticated: bool = False
     attempts: int = 0
     strict_cleanup: bool = False
+
+
+def encode_password(password: str | bytes | None) -> bytes | None:
+    """Validate an upfront secret without exposing it in diagnostics.
+
+    :param password: UTF-8 text, raw bytes, or no configured password.
+    :returns: Raw password bytes, including empty bytes, or None.
+    :raises ConfigurationError: The secret has an invalid type, text, or delimiter.
+    """
+    if password is None:
+        return None
+    if isinstance(password, str):
+        try:
+            password = password.encode("utf-8")
+        except UnicodeError:
+            raise ConfigurationError("Invalid sudo password") from None
+    if not isinstance(password, bytes) or any(value in password for value in (b"\n", b"\r", b"\0")):
+        raise ConfigurationError("Invalid sudo password")
+    return password
+
+
+def resolve_privilege(request: PrivilegeRequest, password: str | bytes | None) -> PrivilegeRequest:
+    """Use a session secret only for elevation without an explicit provider.
+
+    :param request: Command-specific or default privilege request.
+    :param password: Configured session password; None preserves the request.
+    :returns: Original request or an interactive request capturing the supplied secret.
+    :raises ConfigurationError: A configured secret has become invalid.
+    """
+    if (
+        request.requirement != "elevated"
+        or password is None
+        or request.password_provider is not None
+    ):
+        return request
+    secret = encode_password(password)
+    assert secret is not None
+
+    async def password_provider() -> bytes:
+        """Return the captured secret only when the authentication transport asks.
+
+        :returns: Prevalidated password bytes without consulting ambient state.
+        """
+        return secret
+
+    return replace(request, interactive=True, password_provider=password_provider)
 
 
 def validate_privilege(request: PrivilegeRequest, capabilities: SessionCapabilities) -> None:

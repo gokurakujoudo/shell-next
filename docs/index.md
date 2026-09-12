@@ -3,7 +3,7 @@
 <div class="hero">
   <img src="assets/shell-next-logo.png" alt="shell-next logo" width="220" height="220">
   <div>
-    <p class="version">shell-next 0.1.2 · Python 3.14+</p>
+    <p class="version">shell-next 0.1.3 · Python 3.14+</p>
     <p>Persistent asynchronous Bash, PowerShell, and cmd sessions. Own commands through completion, interact with prompts, and test the same application code with a deterministic mock.</p>
     <a class="button" href="getting-started/">Get started</a>
     <a class="button secondary" href="https://github.com/gokurakujoudo/shell-next">View on GitHub</a>
@@ -40,10 +40,13 @@ environment variables, and native shell state persist between normal commands.
   configuration. Declare expected commands, input, output, failures, and virtual time.
 - **Backend honesty.** Discover supported features before execution. Forced
   interruption invalidates the session; there is no hidden restart.
+- **Session sudo password.** Supply `SessionConfig(sudo_password=...)` once for
+  elevated Bash commands, or use a per-command provider for on-demand secrets.
 
 ## Find your next step
 
 - [Getting started](getting-started.md): choose a backend and run your first command.
+- [Step-by-step tutorial](tutorials/index.md): learn each feature with complete runnable examples.
 - [Usage guide](usage.md): input, deadlines, results, capture, and sudo.
 - [Backend support](backends.md): Linux and Windows guarantees and limitations.
 - [Testing applications](testing.md): test production call paths without starting a shell.

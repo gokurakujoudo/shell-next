@@ -124,6 +124,9 @@ class NativeDriver:
         # PowerShell's driver accepts literal paths rather than expressions.
         if self.config.backend == Backend.POWERSHELL:
             line = str(wrapper)
+        elif self.config.backend == Backend.CMD:
+            # Report from the caller so cmd has finished reading the batch file.
+            line += f"\necho {handle.command_id}:%errorlevel%"
         await self.native.write(line + "\n")
         process = self.native.process
         assert process is not None and process.stdout is not None

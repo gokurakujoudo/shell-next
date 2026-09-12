@@ -87,6 +87,29 @@ async def test_wrong_password_and_attempt_limit(directory: Path) -> None:
         assert calls == 1
 
 
+async def test_upfront_session_password_reauthenticates_and_preserves_business_input(
+    directory: Path,
+) -> None:
+    invalidate_credentials()
+    config = config_for("bash", directory)
+    config.sudo_password = os.environ["SHELL_NEXT_SUDO_PASSWORD"]
+    command = python_command("import os; print(os.geteuid()); print(input())")
+    options = CommandOptions(
+        privilege=PrivilegeRequest(requirement="elevated"),
+        stdin=StdinMode.PLAN,
+        input_plan=InputPlan((SendLine(b"business-input"), CloseStdin())),
+    )
+    async with use_shell_session(config) as shell:
+        for expected_attempts in (1, 0, 1):
+            result = await shell.run(command, options=options, check=True, timeout=15)
+            assert result.stdout_str() == "0\nbusiness-input\n"
+            assert result.privilege.authenticated
+            assert result.privilege.attempts == expected_attempts
+            assert config.sudo_password not in repr(result)
+            if expected_attempts == 0:
+                invalidate_credentials()
+
+
 async def test_noninteractive_sudo_and_strict_cleanup_rejection(directory: Path) -> None:
     invalidate_credentials()
     options = CommandOptions(privilege=PrivilegeRequest(requirement="elevated"))
